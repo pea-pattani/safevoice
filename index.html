@@ -1380,10 +1380,12 @@ body {
 //  CONFIG — ใส่ค่าจริงก่อน deploy
 // ═══════════════════════════════════════════════
 const CFG = {
-  CLAUDE_KEY:   'YOUR_CLAUDE_API_KEY',       // ← Claude API key
-  SUPABASE_URL: 'YOUR_SUPABASE_URL',         // ← https://xxxx.supabase.co
-  SUPABASE_KEY: 'YOUR_SUPABASE_ANON_KEY',    // ← anon/public key
-  REDEEM_COST:  300
+  CLAUDE_KEY:      'YOUR_CLAUDE_API_KEY',    // ← Claude API key
+  OPENAI_KEY:      'YOUR_OPENAI_API_KEY',    // ← OpenAI key สำหรับ Whisper STT
+  SUPABASE_URL:    'YOUR_SUPABASE_URL',      // ← https://xxxx.supabase.co
+  SUPABASE_KEY:    'YOUR_SUPABASE_ANON_KEY', // ← anon/public key
+  STORAGE_BUCKET:  'near-miss-photos',       // ← Supabase Storage bucket name
+  REDEEM_COST:     300
 };
 
 // ═══════════════════════════════════════════════
@@ -1478,6 +1480,27 @@ const SB = {
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || res.status); }
     return res.json();
+  },
+
+  // ── STORAGE: Upload photo → Supabase Storage ──
+  // path เช่น "near-miss-photos/NM-001/photo_0.jpg"
+  async uploadPhoto(file, path, token) {
+    const res = await fetch(
+      `${CFG.SUPABASE_URL}/storage/v1/object/${CFG.STORAGE_BUCKET}/${path}`,
+      {
+        method:  'POST',
+        headers: {
+          'Authorization': `Bearer ${token || CFG.SUPABASE_KEY}`,
+          'apikey':        CFG.SUPABASE_KEY,
+          'Content-Type':  file.type || 'image/jpeg',
+          'x-upsert':      'true'
+        },
+        body: file
+      }
+    );
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error || res.status); }
+    // คืน public URL
+    return `${CFG.SUPABASE_URL}/storage/v1/object/public/${CFG.STORAGE_BUCKET}/${path}`;
   }
 };
 
@@ -1529,16 +1552,19 @@ const APP = {
   loggedUser:    null,
   credits:       0,
   // Report
-  rIsAnon:    false,
-  rMode:      'voice',
-  rRecording: false,
-  rMediaRec:  null,
-  rBlobs:     [],
-  rTimerInt:  null,
-  rElapsed:   0,
-  rTranscript:'',
-  rPhotos:    [],
-  rAiResult:  null,
+  rIsAnon:     false,
+  rMode:       'voice',
+  rRecording:  false,
+  rMediaRec:   null,
+  rBlobs:      [],
+  rTimerInt:   null,
+  rElapsed:    0,
+  rTranscript: '',
+  rPhotos:     [],
+  rPhotosB64:  [],
+  rSpeechRec:  null,
+  rSpeechFinal:'',
+  rAiResult:   null,
   // Credits
   cPendingWarningId: null,
   // Admin
@@ -1644,10 +1670,10 @@ async function loginWithSupabase(emailOrCode, password) {
 
 function loginWithMock(id, pw) {
   const MOCK_USERS = {
-    '278629': {name:'นางนฤมล เจริญพานิช',dept:'กฟจ.ปัตตานี',role:'employee',credits:0,redeems:0},
-    '278629@pea-pattani.local': {name:'นางนฤมล เจริญพานิช',dept:'กฟจ.ปัตตานี',role:'employee',credits:0,redeems:0},
-    '303644': {name:'นายสาโรจน์ แนวบรรทัด',dept:'กฟจ.ปัตตานี',role:'employee',credits:0,redeems:0},
-    '303644@pea-pattani.local': {name:'นายสาโรจน์ แนวบรรทัด',dept:'กฟจ.ปัตตานี',role:'employee',credits:0,redeems:0},
+    '278629': {name:'นางนฤมล เจริญพานิช',dept:'กฟจ.ปัตตานี',role:'employee',credits:170,redeems:1},
+    '278629@pea-pattani.local': {name:'นางนฤมล เจริญพานิช',dept:'กฟจ.ปัตตานี',role:'employee',credits:170,redeems:1},
+    '303644': {name:'นายสาโรจน์ แนวบรรทัด',dept:'กฟจ.ปัตตานี',role:'employee',credits:50,redeems:0},
+    '303644@pea-pattani.local': {name:'นายสาโรจน์ แนวบรรทัด',dept:'กฟจ.ปัตตานี',role:'employee',credits:50,redeems:0},
     '416146': {name:'นายอนัน รัตนวรรณ',dept:'กฟจ.ปัตตานี',role:'safety_officer',credits:0,redeems:0},
     '416146@pea-pattani.local': {name:'นายอนัน รัตนวรรณ',dept:'กฟจ.ปัตตานี',role:'safety_officer',credits:0,redeems:0},
     '449602': {name:'นายสัญญา ชื่นบาน',dept:'กฟจ.ปัตตานี',role:'employee',credits:0,redeems:0},
@@ -2014,6 +2040,16 @@ function renderDashHistory(reports) {
       </div>`;
     }
 
+    // photo thumbnails (ถ้ามี)
+    const photoThumbsHTML = (r.photoUrls?.length)
+      ? `<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+          ${r.photoUrls.map(u => `
+            <img src="${u}" alt="รูปประกอบ"
+              style="width:60px;height:60px;object-fit:cover;border-radius:6px;
+                     border:1px solid var(--border);cursor:pointer;"
+              onclick="rViewPhoto('${u}')">`).join('')}
+        </div>` : '';
+
     return `<div class="history-item">
       <div class="risk-dot ${ri.dot}"></div>
       <div style="flex:1;">
@@ -2025,7 +2061,9 @@ function renderDashHistory(reports) {
             r.status==='rejected' ? `<span class="status-r">✗ ไม่ผ่าน</span>` :
             `<span class="status-p">⏳ รอตรวจ</span>`}
           ${r.credits && r.status==='verified' ? `<span class="h-cred">+${r.credits}</span>` : ''}
+          ${r.photos > 0 && !r.photoUrls?.length ? `<span style="font-size:10px;color:var(--muted);">📷 ${r.photos}</span>` : ''}
         </div>
+        ${photoThumbsHTML}
         ${trustHTML}
       </div></div>`;
   }).join('') : '<div style="text-align:center;color:var(--muted);padding:24px;">ยังไม่มีรายงาน</div>';
@@ -2048,7 +2086,8 @@ function toggleDashHistory() {
 // ═══════════════════════════════════════════════
 function initReport() {
   APP.rIsAnon = false; APP.rMode = 'voice'; APP.rRecording = false;
-  APP.rTranscript = ''; APP.rPhotos = []; APP.rAiResult = null; APP.rElapsed = 0;
+  APP.rTranscript = ''; APP.rPhotos = []; APP.rPhotosB64 = []; APP.rAiResult = null; APP.rElapsed = 0;
+  APP.rSpeechFinal = ''; APP.rSpeechInterim = ''; APP.rSpeechRec = null;
   clearInterval(APP.rTimerInt);
   document.getElementById('r-emp-badge').textContent = APP.loggedUser?.id || '—';
   // reset UI
@@ -2107,12 +2146,19 @@ async function rToggleRecord() {
 async function rStartRec() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    APP.rBlobs = [];
+    APP.rBlobs        = [];
+    APP.rSpeechFinal  = '';
+    APP.rSpeechInterim= '';
+    APP.rSpeechRec    = null;
+
     APP.rMediaRec = new MediaRecorder(stream);
-    APP.rMediaRec.ondataavailable = e => { if (e.data.size>0) APP.rBlobs.push(e.data); };
-    APP.rMediaRec.onstop = () => { stream.getTracks().forEach(t=>t.stop()); rProcessAudio(); };
+    APP.rMediaRec.ondataavailable = e => { if (e.data.size > 0) APP.rBlobs.push(e.data); };
+    APP.rMediaRec.onstop = () => { stream.getTracks().forEach(t => t.stop()); rProcessAudio(); };
     APP.rMediaRec.start();
     APP.rRecording = true; APP.rElapsed = 0;
+
+    // เริ่ม Web Speech live พร้อมกันเลย (fallback ฟรี)
+    rInitWebSpeechLive();
 
     const btn = document.getElementById('r-rec-btn');
     btn.classList.add('recording'); btn.textContent = '⏹';
@@ -2122,29 +2168,185 @@ async function rStartRec() {
 
     APP.rTimerInt = setInterval(() => {
       APP.rElapsed++;
-      const m = String(Math.floor(APP.rElapsed/60)).padStart(2,'0');
-      const s = String(APP.rElapsed%60).padStart(2,'0');
+      const m = String(Math.floor(APP.rElapsed / 60)).padStart(2, '0');
+      const s = String(APP.rElapsed % 60).padStart(2, '0');
       document.getElementById('r-timer').textContent = `${m}:${s} / 0:30`;
       document.getElementById('r-timer').className = 'timer active';
       if (APP.rElapsed >= 30) rStopRec();
     }, 1000);
-  } catch(e) { showToast('ไม่สามารถเข้าถึงไมโครโฟน: '+e.message, 'red'); }
+  } catch(e) {
+    showToast('ไม่สามารถเข้าถึงไมโครโฟน: ' + e.message, 'red');
+  }
 }
 
 function rStopRec() {
   if (!APP.rRecording) return;
-  APP.rRecording = false; clearInterval(APP.rTimerInt);
+  APP.rRecording = false;
+  clearInterval(APP.rTimerInt);
+
+  // หยุด Web Speech ก่อน (ป้องกัน auto-restart ใน onend)
+  if (APP.rSpeechRec) {
+    try { APP.rSpeechRec.stop(); } catch(_) {}
+    APP.rSpeechRec = null;
+  }
+
   if (APP.rMediaRec?.state !== 'inactive') APP.rMediaRec.stop();
+
   const btn = document.getElementById('r-rec-btn');
   btn.classList.remove('recording'); btn.textContent = '🎙';
   document.getElementById('r-rec-status').textContent = '⌛ กำลังแปลงเสียง...';
   document.getElementById('r-waveform').classList.remove('active');
 }
 
-function rProcessAudio() {
-  // Demo: ใช้ข้อความจำลอง — แทนที่ด้วย Whisper API จริงได้เลย
-  const demo = 'พบบันไดอลูมิเนียมมีรอยร้าวที่ขั้นที่สาม ระหว่างงานติดตั้งหม้อแปลง ผมเอาเทปสีแดงพันไว้และแจ้งหัวหน้าให้ส่งซ่อมแล้วครับ';
-  rSetTranscript(demo);
+// ═══════════════════════════════════════════════════════════════
+//  SPEECH-TO-TEXT ENGINE
+//  Architecture:
+//    rStartRec()  → เริ่ม MediaRecorder + Web Speech พร้อมกัน (live)
+//    rStopRec()   → หยุดทั้งคู่
+//    rProcessAudio() → ส่ง blob ไป Whisper (ถ้ามี key) แทน Web Speech result
+//
+//  Priority: 1) Whisper (หลังหยุดบันทึก)  2) Web Speech live  3) แจ้ง error
+// ═══════════════════════════════════════════════════════════════
+
+// ── ติดตั้ง Web Speech live ระหว่าง rStartRec ──
+// เรียกจาก rStartRec() ก่อน MediaRecorder.start()
+function rInitWebSpeechLive() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return; // ไม่รองรับ — ใช้แค่ Whisper
+
+  APP.rSpeechRec      = new SR();
+  APP.rSpeechFinal    = '';  // ข้อความที่ confirm แล้ว
+  APP.rSpeechInterim  = '';  // ข้อความระหว่างพูด
+
+  APP.rSpeechRec.lang             = 'th-TH';
+  APP.rSpeechRec.continuous       = true;   // ฟังต่อเนื่องตลอด 30 วิ
+  APP.rSpeechRec.interimResults   = true;   // แสดง interim ให้ user เห็น
+  APP.rSpeechRec.maxAlternatives  = 1;
+
+  APP.rSpeechRec.onresult = (e) => {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) {
+        APP.rSpeechFinal += t;
+      } else {
+        interim += t;
+      }
+    }
+    APP.rSpeechInterim = interim;
+
+    // แสดง interim live ใน transcript box
+    const display = (APP.rSpeechFinal + interim).trim();
+    if (display) {
+      document.getElementById('r-transcript-text').textContent = display;
+      document.getElementById('r-transcript-box').classList.add('show');
+    }
+  };
+
+  APP.rSpeechRec.onerror = (e) => {
+    // no-speech และ aborted เป็น error ปกติ — ไม่ต้อง alert
+    if (e.error !== 'no-speech' && e.error !== 'aborted') {
+      console.warn('Web Speech error:', e.error);
+    }
+  };
+
+  APP.rSpeechRec.onend = () => {
+    // restart ถ้ายังบันทึกอยู่ (continuous ใน mobile มักหยุดเองทุก ~5 วิ)
+    if (APP.rRecording) {
+      try { APP.rSpeechRec.start(); } catch(_) {}
+    }
+  };
+
+  try {
+    APP.rSpeechRec.start();
+  } catch(e) {
+    console.warn('Web Speech start failed:', e.message);
+    APP.rSpeechRec = null;
+  }
+}
+
+// ── หลังหยุด: ตัดสินใจว่าจะใช้ Whisper หรือ Web Speech result ──
+async function rProcessAudio() {
+  const hasWebSpeechResult = (APP.rSpeechFinal || '').trim().length > 0;
+
+  // ── 1) Whisper (แม่นกว่า) — ถ้ามี key ──
+  if (CFG.OPENAI_KEY && CFG.OPENAI_KEY !== 'YOUR_OPENAI_API_KEY') {
+    document.getElementById('r-rec-status').textContent = '⌛ กำลังแปลงเสียง (Whisper)...';
+    try {
+      await rTranscribeWhisper();
+      return; // สำเร็จ — ไม่ต้องใช้ Web Speech
+    } catch(e) {
+      console.warn('Whisper failed:', e.message);
+      // ถ้า Whisper fail แต่มี Web Speech result → ใช้ได้เลย
+      if (hasWebSpeechResult) {
+        rSetTranscript(APP.rSpeechFinal.trim());
+        showToast('⚠ Whisper ล้มเหลว — ใช้ผล Web Speech แทน', 'amber');
+        return;
+      }
+    }
+  }
+
+  // ── 2) Web Speech live result (ฟรี, ทำงานใน Chrome/Edge) ──
+  if (hasWebSpeechResult) {
+    rSetTranscript(APP.rSpeechFinal.trim());
+    showToast('🎙 แปลงเสียงสำเร็จ');
+    return;
+  }
+
+  // ── 3) ไม่มีทั้งคู่ ──
+  document.getElementById('r-rec-status').textContent = '⚠ ไม่สามารถแปลงเสียงได้';
+  document.getElementById('r-rec-status').className   = 'rec-status';
+
+  const noKey    = !CFG.OPENAI_KEY || CFG.OPENAI_KEY === 'YOUR_OPENAI_API_KEY';
+  const noSpeech = !('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+
+  if (noKey && noSpeech) {
+    showToast('กรุณาใส่ OpenAI Key หรือใช้ Chrome/Edge', 'red');
+  } else if (noKey) {
+    showToast('Web Speech ไม่ได้ผล — ลองพิมพ์แทน หรือเพิ่ม OpenAI Key', 'amber');
+  } else {
+    showToast('แปลงเสียงไม่สำเร็จ — ลองพิมพ์ข้อความแทน', 'amber');
+  }
+  rSwitchMode('text');
+}
+
+// ── Whisper API (OpenAI) ──
+async function rTranscribeWhisper() {
+  if (!APP.rBlobs.length) throw new Error('ไม่มีข้อมูลเสียง');
+
+  const mimeType  = APP.rBlobs[0]?.type || 'audio/webm';
+  const audioBlob = new Blob(APP.rBlobs, { type: mimeType });
+
+  if (audioBlob.size > 25 * 1024 * 1024) throw new Error('ไฟล์เสียงใหญ่เกิน 25MB');
+
+  const ext = mimeType.includes('mp4') ? 'mp4'
+            : mimeType.includes('ogg') ? 'ogg'
+            : mimeType.includes('wav') ? 'wav'
+            : 'webm';
+
+  const formData = new FormData();
+  formData.append('file', audioBlob, `recording.${ext}`);
+  formData.append('model', 'whisper-1');
+  formData.append('language', 'th');
+  formData.append('temperature', '0');
+
+  const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    method:  'POST',
+    headers: { 'Authorization': `Bearer ${CFG.OPENAI_KEY}` },
+    body:    formData
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `Whisper error ${res.status}`);
+  }
+
+  const data = (await res.json());
+  const text = (data.text || '').trim();
+  if (!text) throw new Error('Whisper ส่งค่าว่างกลับมา');
+
+  rSetTranscript(text);
+  showToast('🎙 แปลงเสียงด้วย Whisper สำเร็จ');
 }
 
 function rSetTranscript(text) {
@@ -2157,15 +2359,101 @@ function rSetTranscript(text) {
 }
 
 function rHandlePhotos(e) {
-  const files = Array.from(e.target.files).slice(0,3);
-  APP.rPhotos = files;
+  const raw   = Array.from(e.target.files).slice(0, 3);
+  const MAX_MB = 5;
+  const valid  = raw.filter(f => {
+    if (f.size > MAX_MB * 1024 * 1024) {
+      showToast(`${f.name} ใหญ่เกิน ${MAX_MB}MB — ข้ามไป`, 'amber'); return false;
+    }
+    if (!f.type.startsWith('image/')) {
+      showToast(`${f.name} ไม่ใช่รูปภาพ`, 'red'); return false;
+    }
+    return true;
+  });
+
+  APP.rPhotos     = valid;        // File objects (สำหรับ upload Supabase)
+  APP.rPhotosB64  = [];           // base64 (สำหรับเก็บ local + preview)
+
   const prev = document.getElementById('r-photo-preview');
   prev.innerHTML = '';
-  files.forEach(f => {
-    const reader = new FileReader();
-    reader.onload = ev => { const img = document.createElement('img'); img.src = ev.target.result; prev.appendChild(img); };
-    reader.readAsDataURL(f);
+
+  valid.forEach((f, idx) => {
+    rCompressAndPreview(f, idx, prev);
   });
+
+  // อัปเดต label ถ้าเลือกรูปแล้ว
+  const ph = document.querySelector('.ph-label');
+  if (ph) ph.textContent = valid.length > 0
+    ? `เลือกแล้ว ${valid.length} รูป — แตะเพื่อเปลี่ยน`
+    : 'แตะเพื่อถ่ายรูปหรือเลือกจากคลัง';
+}
+
+// compress รูปก่อน preview + เก็บ base64
+function rCompressAndPreview(file, idx, previewEl) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const original = ev.target.result;
+
+    // compress ด้วย canvas (max 1200px, quality 0.82)
+    const image = new Image();
+    image.onload = () => {
+      const MAX_DIM = 1200;
+      let { width, height } = image;
+      if (width > MAX_DIM || height > MAX_DIM) {
+        const ratio = Math.min(MAX_DIM / width, MAX_DIM / height);
+        width  = Math.round(width  * ratio);
+        height = Math.round(height * ratio);
+      }
+
+      const canvas  = document.createElement('canvas');
+      canvas.width  = width;
+      canvas.height = height;
+      canvas.getContext('2d').drawImage(image, 0, 0, width, height);
+
+      const compressed = canvas.toDataURL('image/jpeg', 0.82);
+      APP.rPhotosB64[idx] = compressed;
+
+      // แสดง preview
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = 'position:relative;display:inline-block;';
+
+      const img = document.createElement('img');
+      img.src   = compressed;
+
+      // ปุ่มลบรูป
+      const del = document.createElement('button');
+      del.textContent  = '✕';
+      del.style.cssText = `
+        position:absolute;top:2px;right:2px;
+        background:#ef4444cc;border:none;border-radius:50%;
+        width:20px;height:20px;color:#fff;font-size:11px;
+        cursor:pointer;display:flex;align-items:center;justify-content:center;
+        line-height:1;padding:0;
+      `;
+      del.onclick = () => rRemovePhoto(idx);
+
+      wrapper.appendChild(img);
+      wrapper.appendChild(del);
+      previewEl.appendChild(wrapper);
+    };
+    image.src = original;
+  };
+  reader.readAsDataURL(file);
+}
+
+function rRemovePhoto(idx) {
+  APP.rPhotos.splice(idx, 1);
+  APP.rPhotosB64.splice(idx, 1);
+  // re-render
+  const input = document.getElementById('r-photo-input');
+  if (input) input.value = '';
+  const prev = document.getElementById('r-photo-preview');
+  prev.innerHTML = '';
+  APP.rPhotos.forEach((f, i) => rCompressAndPreview(f, i, prev));
+  const ph = document.querySelector('.ph-label');
+  if (ph) ph.textContent = APP.rPhotos.length > 0
+    ? `เลือกแล้ว ${APP.rPhotos.length} รูป — แตะเพื่อเปลี่ยน`
+    : 'แตะเพื่อถ่ายรูปหรือเลือกจากคลัง';
 }
 
 // ═══════════════════════════════════════════════
@@ -2383,9 +2671,41 @@ function rShowResult(r) {
   setTimeout(() => res.scrollIntoView({behavior:'smooth', block:'start'}), 100);
 }
 
-function rSubmit() {
+async function rSubmit() {
   const credits = APP.rIsAnon ? 0 : APP.rAiResult.credits;
   const input   = APP.rMode==='voice' ? APP.rTranscript : document.getElementById('r-text-input').value;
+
+  // ── ตรวจ High Risk ต้องมีรูป ──
+  if (APP.rAiResult.risk_level === 'High' && APP.rPhotos.length === 0) {
+    showToast('⚠ รายงาน High Risk ต้องแนบรูปภาพอย่างน้อย 1 รูป', 'red');
+    document.querySelector('.photo-area')?.scrollIntoView({ behavior:'smooth', block:'center' });
+    return;
+  }
+
+  // disable ปุ่มระหว่างส่ง
+  const submitBtn = document.querySelector('#r-ai-result .btn-primary');
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '⌛ กำลังส่ง...'; }
+
+  const reportId = `NM-${Date.now()}`;
+
+  // ── Upload photos ไป Supabase Storage (non-blocking, best-effort) ──
+  const photoUrls = [];
+  if (CFG.SUPABASE_URL !== 'YOUR_SUPABASE_URL' && APP.rPhotos.length > 0) {
+    const token = SESSION.token();
+    const uploads = APP.rPhotos.map((file, i) => {
+      const ext  = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const path = `${reportId}/photo_${i}.${ext}`;
+      return SB.uploadPhoto(file, path, token)
+        .then(url => { photoUrls[i] = url; })
+        .catch(e  => console.warn(`Photo ${i} upload failed:`, e.message));
+    });
+    // รอ upload ทุกรูป (timeout 10 วิ)
+    await Promise.race([
+      Promise.allSettled(uploads),
+      new Promise(r => setTimeout(r, 10000))
+    ]);
+  }
+
   const payload = {
     employee_id:   APP.rIsAnon ? null : APP.loggedUser?.id,
     is_anonymous:  APP.rIsAnon,
@@ -2397,6 +2717,7 @@ function rSubmit() {
     ai_heinrich:   APP.rAiResult.heinrich_note,
     credits_given: credits,
     photo_count:   APP.rPhotos.length,
+    photo_urls:    photoUrls.length ? photoUrls : null,
     status:        'pending'
   };
 
@@ -2407,21 +2728,44 @@ function rSubmit() {
       .catch(e  => console.warn('Supabase insert failed:', e.message));
   }
 
-  // อัปเดต local state ทันที
-  APP.credits += credits;
-  DB.reports.unshift({ id:`NM-${Date.now()}`, date:new Date().toISOString().split('T')[0],
-    emp_id:APP.rIsAnon?null:APP.loggedUser?.id, emp_name:APP.rIsAnon?'นิรนาม':APP.loggedUser?.name,
-    text:input, risk:APP.rAiResult.risk_level, category:APP.rAiResult.category, credits,
-    summary:APP.rAiResult.summary_th, action:APP.rAiResult.action,
-    status:'pending', photos:APP.rPhotos.length, is_anon:APP.rIsAnon });
-  if (credits > 0) DB.transactions.unshift({
-    date:new Date().toISOString().split('T')[0],
-    desc:'รายงาน Near Miss (รอยืนยัน)', type:`${APP.rAiResult.risk_level} Risk`, amount:+credits });
+  if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '✅ ส่งรายงาน'; }
+
+  // อัปเดต local state — ยังไม่บวก credits (รอ admin verify)
+  const newReport = {
+    id:        reportId,
+    date:      new Date().toISOString().split('T')[0],
+    emp_id:    APP.rIsAnon ? null : APP.loggedUser?.id,
+    emp_name:  APP.rIsAnon ? 'นิรนาม' : APP.loggedUser?.name,
+    text:      input,
+    risk:      APP.rAiResult.risk_level,
+    category:  APP.rAiResult.category,
+    credits,
+    summary:   APP.rAiResult.summary_th,
+    action:    APP.rAiResult.action,
+    status:    'pending',
+    photos:    APP.rPhotos.length,
+    photoUrls: photoUrls.length ? photoUrls : (APP.rPhotosB64 || []), // local b64 fallback
+    is_anon:   APP.rIsAnon
+  };
+  DB.reports.unshift(newReport);
+
+  // บันทึก transaction แบบ pending (amount=0 จนกว่าจะ verify)
+  if (!APP.rIsAnon && credits > 0) {
+    DB.transactions.unshift({
+      date:      newReport.date,
+      desc:      `รายงาน ${newReport.id} (⏳ รอยืนยัน)`,
+      type:      `${APP.rAiResult.risk_level} Risk`,
+      amount:    0,
+      pending:   true,
+      report_id: newReport.id,
+      potential: credits
+    });
+  }
 
   document.getElementById('r-ai-result').style.display = 'none';
   document.getElementById('r-succ-cred').textContent  = APP.rIsAnon
     ? 'รายงานถูกบันทึก (นิรนาม — ไม่ได้รับ Credits)'
-    : `คุณได้รับ +${credits} Safety Credits`;
+    : `รายงานส่งแล้ว — รอ จป. ยืนยันเพื่อรับ +${credits} Credits`;
   document.getElementById('r-succ-total').textContent = APP.credits;
   document.getElementById('r-success').classList.add('show');
   document.getElementById('r-success').scrollIntoView({behavior:'smooth', block:'start'});
@@ -2433,6 +2777,24 @@ function rReset() {
   APP.rDupDismissed  = false;
   document.getElementById('r-dup-warning').style.display = 'none';
   initReport();
+}
+
+// ── Photo lightbox ──
+function rViewPhoto(src) {
+  let lb = document.getElementById('photo-lightbox');
+  if (!lb) {
+    lb = document.createElement('div');
+    lb.id = 'photo-lightbox';
+    lb.style.cssText = `
+      position:fixed;inset:0;background:#000000ee;
+      display:flex;align-items:center;justify-content:center;
+      z-index:500;cursor:zoom-out;
+    `;
+    lb.onclick = () => lb.remove();
+    document.body.appendChild(lb);
+  }
+  lb.innerHTML = `<img src="${src}" style="max-width:95vw;max-height:90vh;object-fit:contain;border-radius:10px;">`;
+  document.body.appendChild(lb);
 }
 
 // ═══════════════════════════════════════════════
@@ -2498,25 +2860,33 @@ function cRenderTransactions() {
   myReports.forEach(r => { reportMap[r.id] = r; });
 
   const txHTML = DB.transactions.map(tx => {
-    // หา report ที่ตรงกัน (ถ้ามี)
     const relReport = myReports.find(r =>
       tx.desc && (tx.desc.includes(r.id) || (r.text && tx.desc.includes(r.text.slice(0,20))))
     );
 
     let trustBadge = '';
-    if (tx.amount > 0 && relReport) {
+    if (tx.pending) {
+      trustBadge = `<span style="font-size:10px;color:var(--amber);">⏳ รอ จป. ยืนยัน — จะได้รับ +${tx.potential} Credits</span>`;
+    } else if (tx.amount > 0 && relReport) {
       trustBadge = `<span style="font-size:10px;color:var(--green);">✅ ยืนยันโดย ${relReport.verified_by||'จป.'}</span>`;
     } else if (tx.amount < 0) {
       trustBadge = `<span style="font-size:10px;color:var(--muted);">🔄 แลก Credits</span>`;
     }
 
-    return `<div class="tx-item">
+    // pending: แสดงตัวเลข potential แบบ muted, confirmed: แสดงสีปกติ
+    const amtClass  = tx.pending ? '' : (tx.amount > 0 ? 'tx-plus' : 'tx-minus');
+    const amtStyle  = tx.pending ? 'color:var(--amber);font-size:14px;' : '';
+    const amtText   = tx.pending
+      ? `+${tx.potential}?`
+      : (tx.amount > 0 ? `+${tx.amount}` : `${tx.amount}`);
+
+    return `<div class="tx-item" style="${tx.pending?'opacity:0.75;':''}">
       <div style="flex:1;">
         <div class="tx-desc">${tx.desc}</div>
         <div class="tx-date">${fmtDate(tx.date)}</div>
         <div style="margin-top:2px;">${trustBadge}</div>
       </div>
-      <div class="tx-amount ${tx.amount>0?'tx-plus':'tx-minus'}">${tx.amount>0?'+':''}${tx.amount}</div>
+      <div class="tx-amount ${amtClass}" style="${amtStyle}">${amtText}</div>
     </div>`;
   }).join('');
 
@@ -2745,11 +3115,36 @@ async function aVerify(id) {
   }
 
   // อัปเดต local state
-  r.status = 'verified';
+  r.status        = 'verified';
   r.verified_by   = APP.loggedUser?.name || 'จป.';
   r.verified_date = new Date().toISOString().split('T')[0];
-  if (!r.is_anon && r.emp_id && r.emp_id === APP.loggedUser?.id) APP.credits += r.credits;
-  DB.transactions.unshift({ date:r.verified_date, desc:`รายงาน ${r.id}`, type:`${r.risk} Risk`, amount:+r.credits });
+
+  // บวก credits ให้ผู้รายงาน (ไม่ใช่ admin)
+  if (!r.is_anon && r.emp_id && r.credits > 0) {
+    // ถ้าผู้รายงานคือ user ที่ล็อกอินอยู่ (กรณี employee ดู admin ด้วย)
+    if (r.emp_id === APP.loggedUser?.id) {
+      APP.credits += r.credits;
+    }
+    // อัปเดต DB.users เพื่อให้ credits ถูกต้องตอน re-login
+    if (DB.users[r.emp_id]) {
+      DB.users[r.emp_id].credits = (DB.users[r.emp_id].credits || 0) + r.credits;
+    }
+    // อัปเดต pending transaction → เป็น confirmed พร้อมบวก amount จริง
+    const pendingTx = DB.transactions.find(tx => tx.pending && tx.report_id === r.id);
+    if (pendingTx) {
+      pendingTx.pending   = false;
+      pendingTx.amount    = +r.credits;
+      pendingTx.desc      = `รายงาน ${r.id} ✅ ยืนยันแล้ว`;
+      pendingTx.potential = undefined;
+    } else {
+      DB.transactions.unshift({
+        date:   r.verified_date,
+        desc:   `รายงาน ${r.id} ✅ ยืนยันแล้ว`,
+        type:   `${r.risk} Risk`,
+        amount: +r.credits
+      });
+    }
+  }
 
   aRenderStats(); aRenderHeinrich(); aRenderReports();
   showToast(`✅ ยืนยัน ${r.id} — Credits +${r.credits} เข้าบัญชี ${r.emp_name}`);
@@ -2781,6 +3176,10 @@ async function aConfirmReject(id) {
   r.reject_reason = reason;
   r.verified_by   = APP.loggedUser?.name || 'จป.';
   r.verified_date = new Date().toISOString().split('T')[0];
+
+  // ลบ pending transaction ออก (ไม่ได้ credits)
+  const pendingIdx = DB.transactions.findIndex(tx => tx.pending && tx.report_id === r.id);
+  if (pendingIdx !== -1) DB.transactions.splice(pendingIdx, 1);
 
   aRenderStats(); aRenderReports();
   showToast(`✗ ปฏิเสธ ${r.id} — แจ้งพนักงานเรียบร้อย`, 'red');
@@ -3021,28 +3420,42 @@ function anRenderHotspot(reports) {
 // ── Response Time ──
 function anRenderRespTime(reports) {
   const el = document.getElementById('an-resp-list'); if (!el) return;
-  const verified = reports.filter(r => r.verified_hours != null);
+
+  // คำนวณ verified_hours จาก date fields แทนที่จะใช้ field ที่เก็บไว้
+  const verified = reports
+    .filter(r => r.status === 'verified' && r.date && r.verified_date)
+    .map(r => {
+      const submitted = new Date(r.date.replace(/-/g,'/'));
+      const verifiedD = new Date(r.verified_date.replace(/-/g,'/'));
+      const hours     = Math.max(0, Math.round((verifiedD - submitted) / 3600000));
+      return { ...r, _hours: hours };
+    });
+
   if (!verified.length) {
     el.innerHTML = '<div style="color:var(--muted);font-size:11px;">ยังไม่มีข้อมูล verified</div>';
     return;
   }
-  const avg = Math.round(verified.reduce((s,r)=>s+r.verified_hours,0)/verified.length);
-  const sla = Math.round(verified.filter(r=>r.verified_hours<=48).length/verified.length*100);
-  document.getElementById('an-avg-resp').textContent = avg;
-  document.getElementById('an-sla').textContent      = sla+'%';
+
+  const avg = Math.round(verified.reduce((s,r) => s + r._hours, 0) / verified.length);
+  const sla = Math.round(verified.filter(r => r._hours <= 48).length / verified.length * 100);
+
+  const avgEl = document.getElementById('an-avg-resp');
+  const slaEl = document.getElementById('an-sla');
+  if (avgEl) avgEl.textContent = avg > 0 ? avg : '<1';
+  if (slaEl) slaEl.textContent = sla + '%';
 
   const byRisk = { High:[], Medium:[], Low:[] };
-  verified.forEach(r => byRisk[r.risk]?.push(r.verified_hours));
+  verified.forEach(r => byRisk[r.risk]?.push(r._hours));
   const rCol = { High:'#EF4444', Medium:'#F59E0B', Low:'#00C96A' };
 
-  el.innerHTML = Object.entries(byRisk).map(([risk,hrs]) => {
+  el.innerHTML = Object.entries(byRisk).map(([risk, hrs]) => {
     if (!hrs.length) return '';
-    const avgH = Math.round(hrs.reduce((s,h)=>s+h,0)/hrs.length);
-    const pct  = Math.min(avgH/72*100, 100);
+    const avgH = Math.round(hrs.reduce((s,h) => s + h, 0) / hrs.length);
+    const pct  = Math.min(avgH / 72 * 100, 100);
     return `<div class="rt-row">
       <div class="rt-lbl">${risk} (${hrs.length})</div>
       <div class="rt-bar-bg"><div class="rt-bar-fill" data-w="${pct}" style="width:0%;background:${rCol[risk]};"></div></div>
-      <div class="rt-val" style="color:${rCol[risk]};">${avgH}ชม.</div>
+      <div class="rt-val" style="color:${rCol[risk]};">${avgH > 0 ? avgH+'ชม.' : '<1ชม.'}</div>
     </div>`;
   }).join('');
 
