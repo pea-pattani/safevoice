@@ -1,0 +1,2339 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SafeVoice — PEA Pattani Proactive Safety</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap');
+
+:root {
+  --navy:    #0A1628;
+  --dark:    #0D1E35;
+  --card:    #0F2540;
+  --border:  #1A3050;
+  --green:   #00C96A;
+  --greendk: #00A855;
+  --amber:   #F59E0B;
+  --red:     #EF4444;
+  --white:   #E8F4FF;
+  --muted:   #5A8AAA;
+  --ice:     #C8E6FF;
+  --gold:    #FFD700;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Sarabun', sans-serif;
+  background: var(--navy); color: var(--white);
+  min-height: 100vh;
+}
+
+/* ══════════════════ PAGE SYSTEM ══════════════════ */
+.page { display: none; min-height: 100vh; padding-bottom: 90px; }
+.page.active { display: block; }
+
+/* ══════════════════ TOPBAR ══════════════════ */
+.topbar {
+  background: var(--dark); border-bottom: 1px solid var(--border);
+  padding: 14px 20px; display: flex; align-items: center;
+  justify-content: space-between; position: sticky; top: 0; z-index: 100;
+}
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo-icon {
+  width: 34px; height: 34px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+}
+.logo-icon.green  { background: linear-gradient(135deg, var(--green), var(--greendk)); }
+.logo-icon.amber  { background: linear-gradient(135deg, var(--amber), #d97706); }
+.logo-name { font-size: 17px; font-weight: 700; }
+.logo-sub  { font-size: 9px; color: var(--muted); letter-spacing: 2px; }
+
+/* ══════════════════ BOTTOM NAV ══════════════════ */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--dark); border-top: 1px solid var(--border);
+  display: flex; padding: 8px 0 14px; z-index: 100;
+}
+.nav-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  background: none; border: none; cursor: pointer; color: #3A5570;
+  transition: color .2s; font-family: 'Sarabun', sans-serif;
+}
+.nav-btn.active { color: var(--green); }
+.nav-btn svg { width: 22px; height: 22px; }
+.nav-label { font-size: 9px; letter-spacing: .5px; }
+
+/* ══════════════════ MAIN CONTAINER ══════════════════ */
+.main { max-width: 600px; margin: 0 auto; padding: 20px 16px; }
+
+/* ══════════════════ SHARED COMPONENTS ══════════════════ */
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 16px; padding: 18px 20px; margin-bottom: 14px;
+}
+.section-label {
+  font-size: 10px; font-weight: 700; color: var(--muted);
+  letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px;
+}
+.page-title { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.page-sub   { font-size: 13px; color: var(--muted); margin-bottom: 22px; }
+
+.btn-primary {
+  width: 100%; background: linear-gradient(135deg, var(--green), var(--greendk));
+  border: none; border-radius: 12px; padding: 15px;
+  color: #001a08; font-family: 'Sarabun', sans-serif;
+  font-size: 16px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: opacity .2s; letter-spacing: .5px; margin-bottom: 10px;
+}
+.btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+.btn-primary:active:not(:disabled) { opacity: .85; }
+
+.btn-secondary {
+  width: 100%; background: transparent; border: 1.5px solid var(--border);
+  border-radius: 12px; padding: 13px; color: var(--muted);
+  font-family: 'Sarabun', sans-serif; font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: all .2s; margin-bottom: 10px;
+}
+.btn-secondary:hover { border-color: var(--green); color: var(--green); }
+
+.risk-badge {
+  font-size: 10px; font-weight: 700; letter-spacing: .5px;
+  padding: 2px 8px; border-radius: 5px;
+}
+.badge-high   { background:#ef444422; border:1px solid var(--red);   color:var(--red);   }
+.badge-medium { background:#f59e0b22; border:1px solid var(--amber); color:var(--amber); }
+.badge-low    { background:#00c96a22; border:1px solid var(--green); color:var(--green); }
+.badge-pending  { background:#f59e0b22; border:1px solid var(--amber); color:var(--amber); font-size:10px; padding:2px 8px; border-radius:5px; }
+.badge-verified { background:#00c96a22; border:1px solid var(--green); color:var(--green); font-size:10px; padding:2px 8px; border-radius:5px; }
+.badge-rejected { background:#ef444422; border:1px solid var(--red);   color:var(--red);   font-size:10px; padding:2px 8px; border-radius:5px; }
+
+.toggle {
+  width: 46px; height: 26px; background: var(--border);
+  border-radius: 13px; cursor: pointer; position: relative;
+  transition: background .25s; border: none; outline: none; flex-shrink: 0;
+}
+.toggle.on { background: var(--green); }
+.toggle::after {
+  content: ''; width: 20px; height: 20px; background: #fff;
+  border-radius: 50%; position: absolute;
+  top: 3px; left: 3px; transition: left .25s;
+}
+.toggle.on::after { left: 23px; }
+
+/* Credit Ring */
+.credit-ring { position: relative; flex-shrink: 0; }
+.credit-ring svg { transform: rotate(-90deg); }
+.ring-track { fill: none; stroke: #1a2435; stroke-width: 8; }
+.ring-fill  {
+  fill: none; stroke: var(--green); stroke-linecap: round;
+  transition: stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1);
+}
+.ring-center {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+
+/* Progress bar */
+.progress-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.progress-fill {
+  height: 100%; background: linear-gradient(90deg, var(--green), var(--greendk));
+  border-radius: 3px; transition: width 1.2s ease;
+}
+
+/* Spinner */
+.spinner {
+  width: 18px; height: 18px; border: 3px solid #001a0844;
+  border-top-color: #001a08; border-radius: 50%;
+  animation: spin .7s linear infinite; display: none;
+}
+.spinner.show { display: block; }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 100px; left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--dark); border: 1px solid var(--green);
+  border-radius: 12px; padding: 12px 20px;
+  font-size: 13px; color: var(--green); font-weight: 600;
+  opacity: 0; transition: all .3s; z-index: 500; white-space: nowrap;
+  pointer-events: none;
+}
+.toast.show  { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.red   { border-color: var(--red); color: var(--red); }
+.toast.amber { border-color: var(--amber); color: var(--amber); }
+
+/* Animations */
+@keyframes fadeUp  { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+@keyframes spin    { to{transform:rotate(360deg)} }
+@keyframes blink   { 0%,100%{opacity:1} 50%{opacity:.3} }
+@keyframes pulse   { 0%,100%{box-shadow:0 0 0 10px #ef444422} 50%{box-shadow:0 0 0 20px #ef444411} }
+@keyframes countup { from{opacity:0;transform:scale(.8)} to{opacity:1;transform:scale(1)} }
+@keyframes wave    { 0%,100%{height:6px} 50%{height:28px} }
+.fade-up { animation: fadeUp .4s ease both; }
+
+/* ══════════════════════════════════════════════════════
+   PAGE 1: LOGIN
+══════════════════════════════════════════════════════ */
+#page-login {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; padding: 20px;
+}
+.login-box {
+  width: 100%; max-width: 400px;
+  background: var(--dark); border: 1px solid var(--border);
+  border-radius: 24px; padding: 36px 28px;
+}
+.login-logo {
+  text-align: center; margin-bottom: 28px;
+}
+.login-logo .li-icon {
+  width: 64px; height: 64px; margin: 0 auto 12px;
+  background: linear-gradient(135deg, var(--green), var(--greendk));
+  border-radius: 18px; display: flex; align-items: center;
+  justify-content: center; font-size: 32px;
+  box-shadow: 0 0 0 12px #00c96a18, 0 12px 32px #00c96a22;
+}
+.login-logo h1 { font-size: 26px; font-weight: 900; }
+.login-logo p  { font-size: 12px; color: var(--muted); letter-spacing: 2px; margin-top: 2px; }
+
+.form-group { margin-bottom: 14px; }
+.form-label { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 1px; margin-bottom: 6px; display: block; }
+.form-input {
+  width: 100%; background: var(--navy); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 14px; color: var(--white);
+  font-family: 'Sarabun', sans-serif; font-size: 14px; outline: none;
+  transition: border-color .2s;
+}
+.form-input:focus { border-color: var(--green); }
+
+.login-roles {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px;
+}
+.role-btn {
+  padding: 10px; border-radius: 10px;
+  border: 1.5px solid var(--border); background: transparent;
+  color: var(--muted); font-family: 'Sarabun', sans-serif;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: all .2s; text-align: center;
+}
+.role-btn.selected { border-color: var(--green); color: var(--green); background: #00c96a11; }
+.role-btn .rb-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+
+.login-hint { font-size: 11px; color: var(--muted); text-align: center; margin-top: 14px; }
+.login-hint span { color: var(--green); cursor: pointer; }
+
+/* ══════════════════════════════════════════════════════
+   PAGE 2: DASHBOARD
+══════════════════════════════════════════════════════ */
+.hero-card {
+  background: linear-gradient(135deg, #0D2A1A, #0D1E35);
+  border: 1px solid #00c96a33; border-radius: 20px;
+  padding: 22px 20px; margin-bottom: 14px;
+}
+.hero-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
+.hero-name { font-size: 16px; font-weight: 700; }
+.hero-dept { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.hero-id   { font-size: 10px; color: var(--muted); margin-top: 4px; font-family: monospace; }
+
+.stats-row { display: flex; gap: 10px; }
+.stat-box  { flex: 1; background: var(--navy); border-radius: 10px; padding: 10px 12px; }
+.stat-num  { font-size: 24px; font-weight: 900; line-height: 1; }
+.stat-lbl  { font-size: 9px; color: var(--muted); letter-spacing: 1px; margin-top: 2px; }
+
+.warning-alert {
+  background: #1A0808; border: 1px solid #ef444455;
+  border-radius: 14px; padding: 14px 16px; margin-bottom: 14px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.wa-tag   { font-size: 10px; font-weight: 700; color: var(--red); letter-spacing: 1px; margin-bottom: 3px; }
+.wa-text  { font-size: 13px; font-weight: 600; }
+.wa-sub   { font-size: 11px; color: #ff9999; margin-top: 2px; }
+.btn-manage {
+  background: transparent; border: 1.5px solid var(--red);
+  border-radius: 8px; padding: 7px 12px; color: var(--red);
+  font-family: 'Sarabun', sans-serif; font-size: 12px; font-weight: 700;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: all .2s;
+}
+.btn-manage:hover { background: var(--red); color: #fff; }
+
+.mini-chart { display: flex; align-items: flex-end; gap: 6px; height: 52px; margin-top: 12px; }
+.chart-col  { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.chart-bar  { width: 100%; border-radius: 4px 4px 0 0; min-height: 4px; transition: height .8s ease; }
+.chart-mo   { font-size: 9px; color: var(--muted); }
+
+.history-item { display: flex; align-items: flex-start; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--border); }
+.history-item:last-child { border-bottom: none; padding-bottom: 0; }
+.risk-dot  { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+.dot-high  { background: var(--red); }
+.dot-medium{ background: var(--amber); }
+.dot-low   { background: var(--green); }
+.h-text { font-size: 13px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.h-meta { display: flex; gap: 8px; margin-top: 4px; align-items: center; flex-wrap: wrap; }
+.h-date { font-size: 11px; color: var(--muted); }
+.h-cred { font-size: 11px; font-weight: 700; color: var(--gold); margin-left: auto; }
+.status-v { font-size: 10px; font-weight: 700; background: #00c96a22; color: var(--green); padding: 2px 7px; border-radius: 4px; }
+.status-p { font-size: 10px; font-weight: 700; background: #f59e0b22; color: var(--amber); padding: 2px 7px; border-radius: 4px; }
+
+/* ══════════════════════════════════════════════════════
+   PAGE 3: REPORT
+══════════════════════════════════════════════════════ */
+.toggle-row { display: flex; align-items: center; justify-content: space-between; }
+.toggle-info h4 { font-size: 14px; font-weight: 600; }
+.toggle-info p  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+.mode-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.mode-tab {
+  flex: 1; padding: 9px; background: transparent;
+  border: 1.5px solid var(--border); border-radius: 10px;
+  color: var(--muted); font-family: 'Sarabun', sans-serif;
+  font-size: 13px; font-weight: 600; cursor: pointer; transition: all .2s;
+}
+.mode-tab.active { background: var(--green); border-color: var(--green); color: #001a08; }
+
+.recorder-area { text-align: center; padding: 8px 0; }
+.rec-status { font-size: 11px; color: var(--muted); letter-spacing: 2px; margin-bottom: 14px; min-height: 18px; }
+.rec-status.recording { color: var(--red); animation: blink 1s infinite; }
+.rec-status.done      { color: var(--green); }
+.timer { font-family: 'Courier New', monospace; font-size: 30px; font-weight: 700; color: var(--muted); margin-bottom: 14px; min-height: 38px; }
+.timer.active { color: var(--red); }
+.record-btn {
+  width: 86px; height: 86px; border-radius: 50%; border: none;
+  background: linear-gradient(135deg, var(--green), var(--greendk));
+  box-shadow: 0 0 0 10px #00c96a22, 0 8px 24px #00c96a33;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-size: 34px; transition: all .25s; margin: 0 auto 14px;
+}
+.record-btn.recording { background: var(--red); box-shadow: 0 0 0 14px #ef444422; animation: pulse 1.2s infinite; }
+.record-btn:disabled  { opacity: .4; cursor: not-allowed; }
+.waveform { display: flex; gap: 3px; justify-content: center; align-items: center; height: 34px; margin: 6px 0; visibility: hidden; }
+.waveform.active { visibility: visible; }
+.waveform span { width: 3px; background: var(--green); border-radius: 2px; animation: wave .8s ease-in-out infinite; }
+.waveform span:nth-child(2){animation-delay:.07s} .waveform span:nth-child(3){animation-delay:.14s}
+.waveform span:nth-child(4){animation-delay:.21s} .waveform span:nth-child(5){animation-delay:.28s}
+.waveform span:nth-child(6){animation-delay:.21s} .waveform span:nth-child(7){animation-delay:.14s}
+.waveform span:nth-child(8){animation-delay:.07s}
+
+.transcript-box { background: var(--navy); border: 1px solid var(--border); border-radius: 10px; padding: 12px; text-align: left; margin-top: 12px; display: none; }
+.transcript-box.show { display: block; }
+.t-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; margin-bottom: 5px; }
+.t-text  { font-size: 14px; line-height: 1.7; color: var(--ice); }
+
+.text-input {
+  width: 100%; background: var(--navy); border: 1px solid var(--border);
+  border-radius: 10px; padding: 13px; color: var(--white);
+  font-family: 'Sarabun', sans-serif; font-size: 14px; line-height: 1.7;
+  resize: vertical; min-height: 110px; outline: none; transition: border-color .2s;
+}
+.text-input:focus { border-color: var(--green); }
+.text-input::placeholder { color: var(--muted); }
+
+.photo-area {
+  border: 2px dashed var(--border); border-radius: 12px; padding: 18px;
+  text-align: center; cursor: pointer; transition: border-color .2s; position: relative;
+}
+.photo-area:hover { border-color: var(--green); }
+.photo-area input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.photo-area .ph-icon  { font-size: 26px; margin-bottom: 5px; }
+.photo-area .ph-label { font-size: 13px; color: var(--muted); }
+.photo-area .ph-note  { font-size: 10px; color: var(--border); margin-top: 2px; }
+.photo-preview { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.photo-preview img { width: 76px; height: 76px; object-fit: cover; border-radius: 8px; border: 2px solid var(--border); }
+
+.result-card { background: #0A1E10; border: 1px solid #00c96a33; border-radius: 16px; padding: 18px; margin-bottom: 14px; }
+.result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.result-ai-lbl { font-size: 10px; color: var(--green); font-weight: 700; letter-spacing: 2px; }
+.result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.result-cell { background: var(--navy); border-radius: 8px; padding: 10px 12px; }
+.rc-lbl { font-size: 9px; color: var(--muted); margin-bottom: 2px; letter-spacing: 1px; }
+.rc-val { font-size: 14px; font-weight: 700; }
+.rc-val.credits { font-size: 22px; color: var(--gold); }
+.result-summary { font-size: 13px; line-height: 1.7; margin-bottom: 10px; }
+.result-action { background: #0D2A1A; border-radius: 8px; padding: 11px; font-size: 13px; color: #7ACF9A; line-height: 1.6; }
+.result-action strong { color: var(--green); }
+.result-note { margin-top: 8px; font-size: 11px; color: var(--muted); font-style: italic; }
+
+.success-card { background: #0A1E10; border: 1px solid #00c96a44; border-radius: 16px; padding: 32px 20px; text-align: center; display: none; }
+.success-card.show { display: block; animation: fadeUp .35s ease; }
+.success-icon  { font-size: 50px; margin-bottom: 10px; }
+.success-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+.success-cred  { font-size: 14px; color: #7ACF9A; margin-bottom: 6px; }
+.success-total { font-size: 13px; color: var(--muted); margin-bottom: 22px; }
+.success-total span { color: var(--green); font-weight: 700; }
+
+/* ══════════════════════════════════════════════════════
+   PAGE 4: CREDITS
+══════════════════════════════════════════════════════ */
+.credits-hero {
+  background: linear-gradient(135deg, #0D2A1A, #0D1E35);
+  border: 1px solid #00c96a33; border-radius: 20px;
+  padding: 20px; margin-bottom: 14px;
+  display: flex; align-items: center; gap: 20px;
+}
+.credits-info h3    { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.credits-info .ci-s { font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+.prog-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-bottom: 4px; }
+
+.rate-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--border); }
+.rate-row:last-child { border-bottom: none; }
+.rate-name { font-size: 13px; font-weight: 600; }
+.rate-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.rate-pts  { font-size: 18px; font-weight: 900; color: var(--gold); min-width: 48px; text-align: right; }
+
+.warning-item { border-radius: 12px; padding: 14px; margin-bottom: 10px; position: relative; overflow: hidden; }
+.warning-item.active   { background: #1A0808; border: 1px solid #ef444444; }
+.warning-item.redeemed { background: #0A1E10; border: 1px solid #00c96a33; }
+.w-accent { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+.w-accent.active   { background: var(--red); }
+.w-accent.redeemed { background: var(--green); }
+.w-inner { padding-left: 14px; }
+.w-id-date { font-size: 10px; color: var(--muted); font-family: monospace; margin-bottom: 4px; }
+.w-issue   { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.w-impact  { font-size: 11px; margin-bottom: 10px; }
+.w-impact.active   { color: #ff9999; }
+.w-impact.redeemed { color: var(--green); }
+.w-actions { display: flex; gap: 8px; align-items: center; }
+.btn-redeem-main {
+  background: linear-gradient(135deg, var(--green), var(--greendk));
+  border: none; border-radius: 9px; padding: 9px 14px;
+  color: #001a08; font-family: 'Sarabun', sans-serif;
+  font-size: 13px; font-weight: 700; cursor: pointer; transition: opacity .2s;
+}
+.btn-redeem-main:disabled { opacity: .4; cursor: not-allowed; }
+.btn-not-enough {
+  background: transparent; border: 1.5px solid var(--border);
+  border-radius: 9px; padding: 9px 14px; color: var(--muted);
+  font-family: 'Sarabun', sans-serif; font-size: 12px; cursor: not-allowed;
+}
+.w-redeemed-tag { font-size: 11px; color: var(--green); font-weight: 700; padding: 6px 12px; background: #00c96a11; border: 1px solid #00c96a33; border-radius: 8px; }
+.w-cost-note { font-size: 11px; color: var(--muted); }
+
+.tx-item { display: flex; justify-content: space-between; align-items: flex-start; padding: 11px 0; border-bottom: 1px solid var(--border); }
+.tx-item:last-child { border-bottom: none; }
+.tx-desc { font-size: 13px; }
+.tx-date { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.tx-type { font-size: 10px; color: var(--muted); }
+.tx-amount { font-size: 17px; font-weight: 900; }
+.tx-plus  { color: var(--green); }
+.tx-minus { color: var(--red); }
+
+/* Modal */
+.modal-overlay {
+  position: fixed; inset: 0; background: #000000aa;
+  display: flex; align-items: flex-end; justify-content: center;
+  z-index: 300; opacity: 0; pointer-events: none; transition: opacity .25s;
+}
+.modal-overlay.show { opacity: 1; pointer-events: all; }
+.modal-sheet {
+  background: var(--dark); border: 1px solid var(--border);
+  border-radius: 24px 24px 0 0; padding: 26px 22px 34px;
+  width: 100%; max-width: 600px;
+  transform: translateY(100%); transition: transform .3s cubic-bezier(.4,0,.2,1);
+}
+.modal-overlay.show .modal-sheet { transform: translateY(0); }
+.modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 18px; }
+.modal-title  { font-size: 18px; font-weight: 700; text-align: center; margin-bottom: 6px; }
+.modal-sub    { font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 18px; }
+.modal-detail { background: var(--navy); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 16px; }
+.mdr { display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px; }
+.mdr .ml { color: var(--muted); }
+.mdr .mr { font-weight: 600; }
+.mdr .mr.red { color: var(--red); }
+.mdr .mr.grn { color: var(--green); }
+.modal-note { background: #2A1000; border: 1px solid #f59e0b44; border-radius: 10px; padding: 11px; margin-bottom: 16px; font-size: 12px; color: #ffc97a; line-height: 1.6; }
+.modal-btns { display: flex; gap: 10px; }
+.btn-confirm { flex: 2; background: linear-gradient(135deg, var(--green), var(--greendk)); border: none; border-radius: 12px; padding: 14px; color: #001a08; font-family: 'Sarabun', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; }
+.btn-cancel  { flex: 1; background: transparent; border: 1.5px solid var(--border); border-radius: 12px; padding: 14px; color: var(--muted); font-family: 'Sarabun', sans-serif; font-size: 14px; cursor: pointer; }
+
+/* ══════════════════════════════════════════════════════
+   PAGE 5: ADMIN
+══════════════════════════════════════════════════════ */
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+.stat-card  { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; }
+.sc-num { font-size: 28px; font-weight: 900; line-height: 1; }
+.sc-lbl { font-size: 10px; color: var(--muted); letter-spacing: 1px; margin-top: 4px; }
+.sc-sub { font-size: 10px; margin-top: 3px; }
+
+.heinrich-card { background: linear-gradient(135deg,#1A0A0A,#0D1E35); border: 1px solid #ef444433; border-radius: 16px; padding: 18px 20px; margin-bottom: 18px; }
+.h-title { font-size: 12px; font-weight: 700; color: var(--red); margin-bottom: 14px; letter-spacing: 1px; }
+.h-triangle { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.h-row { display: flex; align-items: center; justify-content: center; padding: 8px 16px; border-radius: 4px; }
+.h-row-major { background:#ef444433; border:1px solid #ef444455; min-width:140px; }
+.h-row-minor { background:#f59e0b22; border:1px solid #f59e0b44; min-width:230px; }
+.h-row-near  { background:#00c96a22; border:1px solid #00c96a44; min-width:320px; }
+.h-label { font-size: 12px; font-weight: 700; flex: 1; text-align: center; }
+.h-count { font-size: 20px; font-weight: 900; margin-left: 10px; }
+
+.filter-tabs { display: flex; gap: 7px; margin-bottom: 14px; flex-wrap: wrap; }
+.filter-tab  { padding: 6px 13px; border-radius: 20px; background: transparent; border: 1.5px solid var(--border); color: var(--muted); font-family: 'Sarabun', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .2s; }
+.filter-tab.active { background: var(--amber); border-color: var(--amber); color: #1a0a00; }
+.search-input { width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; color: var(--white); font-family: 'Sarabun', sans-serif; font-size: 13px; outline: none; margin-bottom: 14px; }
+.search-input:focus { border-color: var(--amber); }
+.search-input::placeholder { color: var(--muted); }
+
+.report-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 15px 17px; margin-bottom: 10px; }
+.report-card.high   { border-left: 4px solid var(--red); }
+.report-card.medium { border-left: 4px solid var(--amber); }
+.report-card.low    { border-left: 4px solid var(--green); }
+.rc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 8px; }
+.rc-id-date { font-size: 10px; color: var(--muted); font-family: monospace; }
+.rc-badges  { display: flex; gap: 5px; flex-shrink: 0; }
+.rc-text    { font-size: 13px; line-height: 1.6; margin-bottom: 9px; }
+.rc-meta    { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 11px; }
+.rc-emp     { font-size: 11px; color: var(--ice); }
+.rc-cat     { font-size: 11px; color: var(--muted); }
+.rc-cred    { font-size: 12px; font-weight: 700; color: var(--gold); margin-left: auto; }
+.rc-ai-box  { background: var(--navy); border-radius: 8px; padding: 10px 12px; margin-bottom: 11px; font-size: 12px; color: var(--muted); line-height: 1.6; display: none; }
+.rc-actions { display: flex; gap: 8px; }
+.btn-verify { flex: 1; background: linear-gradient(135deg, var(--green), var(--greendk)); border: none; border-radius: 10px; padding: 9px; color: #001a08; font-family: 'Sarabun', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; }
+.btn-reject { flex: 1; background: transparent; border: 1.5px solid var(--red); border-radius: 10px; padding: 9px; color: var(--red); font-family: 'Sarabun', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: all .2s; }
+.btn-reject:hover { background: var(--red); color: #fff; }
+.btn-detail { background: transparent; border: 1.5px solid var(--border); border-radius: 10px; padding: 9px 13px; color: var(--muted); font-family: 'Sarabun', sans-serif; font-size: 12px; cursor: pointer; }
+.done-tag   { font-size: 12px; font-weight: 600; padding: 8px 14px; border-radius: 8px; width: 100%; text-align: center; }
+.done-v { background:#00c96a11; border:1px solid #00c96a33; color:var(--green); }
+.done-r { background:#ef444411; border:1px solid #ef444433; color:var(--red); margin-bottom: 6px; }
+.reject-reason-note { font-size:11px; color:var(--muted); padding:8px; background:var(--navy); border-radius:6px; line-height:1.5; }
+.reject-wrap { display: none; margin-top: 10px; }
+.reject-wrap.show { display: block; }
+.reject-ta { width:100%; background:var(--navy); border:1px solid var(--red); border-radius:8px; padding:10px 12px; color:var(--white); font-family:'Sarabun',sans-serif; font-size:13px; resize:none; min-height:68px; outline:none; margin-bottom:8px; }
+.reject-ta::placeholder { color:var(--muted); }
+.rej-btns { display: flex; gap: 8px; }
+.btn-cr { flex:1; background:var(--red); border:none; border-radius:8px; padding:9px; color:#fff; font-family:'Sarabun',sans-serif; font-size:13px; font-weight:700; cursor:pointer; }
+.btn-cx { flex:1; background:transparent; border:1.5px solid var(--border); border-radius:8px; padding:9px; color:var(--muted); font-family:'Sarabun',sans-serif; font-size:13px; cursor:pointer; }
+
+.admin-badge { background: #f59e0b22; border: 1px solid #f59e0b55; color: var(--amber); font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 20px; letter-spacing: 1px; }
+.notif-wrap { position: relative; }
+.notif-dot  { position: absolute; top: -2px; right: -2px; width: 8px; height: 8px; background: var(--red); border-radius: 50%; border: 2px solid var(--dark); }
+
+@media(max-width:480px) { .stats-grid { grid-template-columns: repeat(2,1fr); } }
+
+/* ══ ANALYTICS ══ */
+.an-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+.an-card  { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px 18px; }
+.an-title { font-size:11px; font-weight:700; color:var(--amber); letter-spacing:1.5px; margin-bottom:12px; display:flex; align-items:center; gap:6px; }
+
+/* Trend */
+.trend-wrap { position:relative; }
+.trend-svg  { width:100%; height:130px; display:block; overflow:visible; }
+.trend-labels { display:flex; justify-content:space-between; margin-top:3px; }
+.trend-lbl  { font-size:9px; color:var(--muted); flex:1; text-align:center; }
+.an-tooltip {
+  position:fixed; background:var(--dark); border:1px solid var(--border);
+  border-radius:8px; padding:5px 10px; font-size:11px; color:var(--white);
+  pointer-events:none; opacity:0; transition:opacity .15s; z-index:400; white-space:nowrap;
+}
+
+/* Top Risk */
+.tr-row  { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); }
+.tr-row:last-child { border-bottom:none; }
+.tr-rank { width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:900; flex-shrink:0; }
+.rk1 { background:#FFD70022; color:var(--gold); border:1.5px solid var(--gold); }
+.rk2 { background:#C0C0C022; color:#C0C0C0;    border:1.5px solid #C0C0C0; }
+.rk3 { background:#CD7F3222; color:#CD7F32;    border:1.5px solid #CD7F32; }
+.tr-info { flex:1; min-width:0; }
+.tr-name { font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tr-cat  { font-size:10px; color:var(--muted); margin-top:1px; }
+.tr-count { font-size:16px; font-weight:900; flex-shrink:0; }
+
+/* Donut */
+.donut-wrap { display:flex; align-items:center; gap:14px; }
+.donut-svg  { width:100px; height:100px; flex-shrink:0; }
+.leg-item { display:flex; align-items:center; gap:6px; margin-bottom:6px; font-size:11px; }
+.leg-dot  { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+
+/* Heatmap */
+.hm-col-labels { display:flex; gap:3px; padding-left:76px; margin-bottom:3px; }
+.hm-col-lbl    { flex:1; font-size:9px; color:var(--muted); text-align:center; }
+.hm-row        { display:flex; gap:3px; align-items:center; margin-bottom:3px; }
+.hm-row-lbl    { font-size:9px; color:var(--muted); width:72px; flex-shrink:0; text-align:right; padding-right:6px; }
+.hm-cell {
+  flex:1; height:28px; border-radius:4px; display:flex; align-items:center;
+  justify-content:center; font-size:10px; font-weight:700; cursor:pointer;
+  transition:transform .15s; position:relative;
+}
+.hm-cell:hover { transform:scale(1.1); z-index:2; }
+.hc0{background:#1a2435;color:var(--border);}
+.hc1{background:#0a2e1a;color:#3a8a5a;}
+.hc2{background:#0d4025;color:#5abf7a;}
+.hc3{background:#1a5c2e;color:#7acf9a;}
+.hc4{background:#f59e0b22;color:var(--amber);}
+.hc5{background:#f59e0b55;color:var(--amber);}
+.hc6{background:#ef444422;color:#ff8888;}
+.hc7{background:#ef444455;color:var(--red);}
+.hc8{background:#ef4444aa;color:#fff;}
+
+/* Hotspot */
+.hs-item { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
+.hs-item:last-child { border-bottom:none; }
+.hs-icon { width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+.hs-icon.ri { background:#ef444422; } .hs-icon.am { background:#f59e0b22; } .hs-icon.gr { background:#00c96a22; }
+.hs-info  { flex:1; min-width:0; }
+.hs-name  { font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hs-sub   { font-size:10px; color:var(--muted); margin-top:1px; }
+.hs-cnt   { font-size:20px; font-weight:900; text-align:right; flex-shrink:0; }
+
+/* Period tabs */
+.an-period { display:flex; gap:6px; margin-bottom:16px; }
+.an-ptab   { padding:6px 14px; border-radius:20px; background:transparent; border:1.5px solid var(--border); color:var(--muted); font-family:'Sarabun',sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all .2s; }
+.an-ptab.active { background:var(--amber); border-color:var(--amber); color:#1a0a00; }
+
+/* Resp time */
+.rt-row { display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--border); font-size:11px; }
+.rt-row:last-child { border-bottom:none; }
+.rt-lbl { flex:1; color:var(--ice); }
+.rt-bar-bg   { width:90px; height:5px; background:var(--border); border-radius:3px; overflow:hidden; }
+.rt-bar-fill { height:100%; border-radius:3px; transition:width 1s ease; }
+.rt-val { min-width:44px; text-align:right; font-weight:700; }
+
+@media(max-width:560px) { .an-grid2 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════
+  PAGE: LOGIN
+════════════════════════════════════════════════════ -->
+<div id="page-login" class="page active" style="padding-bottom:0;">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="li-icon">🎙</div>
+      <h1>SafeVoice</h1>
+      <p>PEA PATTANI · PROACTIVE SAFETY</p>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">รหัสพนักงาน</label>
+      <input class="form-input" id="loginId" type="text" placeholder="เช่น EMP-2847">
+    </div>
+    <div class="form-group">
+      <label class="form-label">รหัสผ่าน</label>
+      <input class="form-input" id="loginPw" type="password" placeholder="••••••••">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">เข้าสู่ระบบในฐานะ</label>
+      <div class="login-roles">
+        <button class="role-btn selected" id="role-emp" onclick="selectRole('employee')">
+          <span class="rb-icon">👷</span>พนักงาน
+        </button>
+        <button class="role-btn" id="role-admin" onclick="selectRole('admin')">
+          <span class="rb-icon">🛡</span>จป. / Admin
+        </button>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="doLogin()">เข้าสู่ระบบ</button>
+
+    <div class="login-hint">
+      Demo: รหัสพนักงาน <span onclick="fillDemo('employee')">EMP-2847</span>
+      / Admin <span onclick="fillDemo('admin')">ADMIN-01</span>
+      · รหัสผ่าน 1234
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+  PAGE: DASHBOARD
+════════════════════════════════════════════════════ -->
+<div id="page-dashboard" class="page">
+  <div class="topbar">
+    <div class="logo">
+      <div class="logo-icon green">🎙</div>
+      <div><div class="logo-name">SafeVoice</div><div class="logo-sub">PEA PATTANI</div></div>
+    </div>
+    <div class="notif-wrap">
+      <button style="background:var(--card);border:1px solid var(--border);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;" onclick="navTo('credits')">🔔</button>
+      <div class="notif-dot" id="notifDot" style="display:none;"></div>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- Hero -->
+    <div class="hero-card fade-up">
+      <div class="hero-top">
+        <div>
+          <div class="hero-name" id="d-name">—</div>
+          <div class="hero-dept" id="d-dept">—</div>
+          <div class="hero-id"   id="d-id">—</div>
+        </div>
+        <div class="credit-ring" style="width:92px;height:92px;">
+          <svg width="92" height="92" viewBox="0 0 92 92">
+            <circle class="ring-track" cx="46" cy="46" r="34" stroke-width="8"/>
+            <circle class="ring-fill"  cx="46" cy="46" r="34" stroke-width="8"
+              id="d-ring" stroke-dasharray="213.6" stroke-dashoffset="213.6"/>
+          </svg>
+          <div class="ring-center">
+            <div style="font-size:21px;font-weight:900;color:var(--green);line-height:1;" id="d-ring-num">0</div>
+            <div style="font-size:8px;color:var(--muted);letter-spacing:1.5px;">CREDITS</div>
+          </div>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-num" style="color:var(--green);" id="d-reports">0</div><div class="stat-lbl">REPORTS</div></div>
+        <div class="stat-box"><div class="stat-num" style="color:var(--red);"   id="d-warns">0</div><div class="stat-lbl">WARNINGS</div></div>
+        <div class="stat-box"><div class="stat-num" style="color:var(--gold);"  id="d-reds">0</div><div class="stat-lbl">REDEEMS</div></div>
+      </div>
+      <div style="margin-top:14px;">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:4px;">
+          <span>สู่ Redeem ครั้งต่อไป</span><span id="d-prog-txt">0/300</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="d-prog-fill" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <!-- Warning -->
+    <div id="d-warnings"></div>
+
+    <!-- Quick action -->
+    <button class="btn-primary" onclick="navTo('report')">➕ รายงาน Near Miss ใหม่</button>
+
+    <!-- Chart -->
+    <div class="card fade-up">
+      <div class="section-label">รายงานรายเดือน</div>
+      <div class="mini-chart" id="d-chart"></div>
+    </div>
+
+    <!-- History -->
+    <div class="card fade-up">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div class="section-label" style="margin:0;">รายงานล่าสุด</div>
+        <span style="font-size:11px;color:var(--muted);" id="d-hist-count"></span>
+      </div>
+      <div id="d-history"></div>
+      <span id="d-view-all" style="display:none;text-align:center;font-size:12px;color:var(--muted);margin-top:10px;cursor:pointer;display:block;" onclick="toggleDashHistory()"></span>
+    </div>
+  </div>
+
+  <!-- Bottom nav -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" onclick="navTo('dashboard')">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <span class="nav-label">หน้าหลัก</span>
+    </button>
+    <button class="nav-btn" onclick="navTo('report')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      <span class="nav-label">รายงาน</span>
+    </button>
+    <button class="nav-btn" onclick="navTo('credits')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span class="nav-label">Credits</span>
+    </button>
+    <button class="nav-btn" onclick="navTo('admin')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      <span class="nav-label">Dashboard</span>
+    </button>
+  </nav>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+  PAGE: REPORT
+════════════════════════════════════════════════════ -->
+<div id="page-report" class="page">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button onclick="navTo('dashboard')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:20px;">←</button>
+      <div><div class="logo-name" style="font-size:15px;">รายงาน Near Miss</div><div class="logo-sub">ทุกรายงานคือการป้องกันอุบัติเหตุ</div></div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);font-family:monospace;" id="r-emp-badge">—</div>
+  </div>
+
+  <div class="main">
+    <!-- Anonymous toggle -->
+    <div class="card">
+      <div class="toggle-row">
+        <div class="toggle-info"><h4>รายงานแบบนิรนาม</h4><p id="r-anon-desc">ระบุชื่อ → ได้รับ Safety Credits</p></div>
+        <button class="toggle" id="r-anon-btn" onclick="toggleRAnon()"></button>
+      </div>
+    </div>
+
+    <!-- Mode tabs -->
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="r-tab-voice" onclick="rSwitchMode('voice')">🎙 บันทึกเสียง</button>
+      <button class="mode-tab"        id="r-tab-text"  onclick="rSwitchMode('text')">✏️ พิมพ์ข้อความ</button>
+    </div>
+
+    <!-- Voice panel -->
+    <div id="r-panel-voice">
+      <div class="card">
+        <div class="section-label">บันทึกเสียง (สูงสุด 30 วินาที)</div>
+        <div class="recorder-area">
+          <div class="rec-status" id="r-rec-status">กดปุ่มด้านล่างเพื่อเริ่มบันทึก</div>
+          <div class="timer" id="r-timer"></div>
+          <button class="record-btn" id="r-rec-btn" onclick="rToggleRecord()">🎙</button>
+          <div class="waveform" id="r-waveform">
+            <span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span>
+          </div>
+          <div class="transcript-box" id="r-transcript-box">
+            <div class="t-label">TRANSCRIPT</div>
+            <div class="t-text" id="r-transcript-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Text panel -->
+    <div id="r-panel-text" style="display:none;">
+      <div class="card">
+        <div class="section-label">อธิบายเหตุการณ์ที่พบ</div>
+        <textarea class="text-input" id="r-text-input" oninput="rCheckReady()"
+          placeholder="เช่น: พบบันไดอลูมิเนียมมีรอยร้าวที่ขั้นที่สาม ระหว่างงานติดตั้งหม้อแปลง..."></textarea>
+      </div>
+    </div>
+
+    <!-- Photo upload -->
+    <div class="card">
+      <div class="section-label">รูปถ่ายประกอบ <span style="color:var(--muted);font-weight:400;">(บังคับสำหรับ High Risk)</span></div>
+      <div class="photo-area">
+        <input type="file" id="r-photo-input" accept="image/*" multiple onchange="rHandlePhotos(event)">
+        <div class="ph-icon">📷</div>
+        <div class="ph-label">แตะเพื่อถ่ายรูปหรือเลือกจากคลัง</div>
+        <div class="ph-note">รองรับ JPG, PNG — สูงสุด 3 รูป</div>
+      </div>
+      <div class="photo-preview" id="r-photo-preview"></div>
+    </div>
+
+    <!-- Analyze btn -->
+    <div id="r-analyze-section">
+      <button class="btn-primary" id="r-analyze-btn" onclick="rAnalyze()" disabled>
+        <div class="spinner" id="r-spinner"></div>
+        <span id="r-analyze-txt">🤖 วิเคราะห์ด้วย AI</span>
+      </button>
+    </div>
+
+    <!-- AI Result -->
+    <div id="r-ai-result" style="display:none;" class="fade-up">
+      <div class="result-card">
+        <div class="result-header">
+          <div class="result-ai-lbl">AI ANALYSIS RESULT</div>
+          <div class="risk-badge" id="r-risk-badge"></div>
+        </div>
+        <div class="result-grid">
+          <div class="result-cell"><div class="rc-lbl">ประเภทความเสี่ยง</div><div class="rc-val" id="r-category"></div></div>
+          <div class="result-cell"><div class="rc-lbl">Safety Credits</div><div class="rc-val credits" id="r-credits-val"></div></div>
+        </div>
+        <div class="result-summary" id="r-summary"></div>
+        <div class="result-action"><strong>แนะนำ:</strong> <span id="r-action"></span></div>
+        <div class="result-note" id="r-heinrich"></div>
+      </div>
+      <button class="btn-primary" onclick="rSubmit()">✅ ส่งรายงาน</button>
+      <button class="btn-secondary" onclick="rReset()">↩ รายงานใหม่</button>
+    </div>
+
+    <!-- Success -->
+    <div class="success-card" id="r-success">
+      <div class="success-icon">✅</div>
+      <div class="success-title">ส่งรายงานสำเร็จ!</div>
+      <div class="success-cred"  id="r-succ-cred"></div>
+      <div class="success-total">ยอดสะสม: <span id="r-succ-total"></span> แต้ม</div>
+      <button class="btn-primary" onclick="rReset()">+ รายงานเพิ่มเติม</button>
+      <button class="btn-secondary" onclick="navTo('dashboard')">← กลับหน้าหลัก</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+  PAGE: CREDITS
+════════════════════════════════════════════════════ -->
+<div id="page-credits" class="page">
+  <div class="topbar">
+    <div class="logo">
+      <div class="logo-icon green">🎙</div>
+      <div><div class="logo-name">Safety Credits</div><div class="logo-sub">PEA PATTANI</div></div>
+    </div>
+    <div style="font-size:10px;color:var(--muted);font-family:monospace;" id="c-emp-id">—</div>
+  </div>
+
+  <div class="main">
+    <div class="page-title">Safety Credits</div>
+    <div class="page-sub">ใช้คะแนนหักล้างผลกระทบของใบเตือนต่อการประเมินสิ้นปี</div>
+
+    <!-- Hero -->
+    <div class="credits-hero fade-up">
+      <div class="credit-ring" style="width:100px;height:100px;">
+        <svg width="100" height="100" viewBox="0 0 100 100">
+          <circle class="ring-track" cx="50" cy="50" r="40" stroke-width="9"/>
+          <circle class="ring-fill"  cx="50" cy="50" r="40" stroke-width="9"
+            id="c-ring" stroke-dasharray="251.3" stroke-dashoffset="251.3"/>
+        </svg>
+        <div class="ring-center">
+          <div style="font-size:24px;font-weight:900;color:var(--green);line-height:1;" id="c-ring-num">0</div>
+          <div style="font-size:8px;color:var(--muted);letter-spacing:1.5px;">CREDITS</div>
+        </div>
+      </div>
+      <div class="credits-info" style="flex:1;">
+        <h3 id="c-name">—</h3>
+        <div class="ci-s">Safety Credits สะสม</div>
+        <div class="prog-labels"><span>Redeem ครั้งต่อไป</span><span id="c-prog-txt">0/300</span></div>
+        <div class="progress-bar"><div class="progress-fill" id="c-prog-fill" style="width:0%"></div></div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px;" id="c-prog-note"></div>
+      </div>
+    </div>
+
+    <!-- Rate table -->
+    <div class="card fade-up">
+      <div class="section-label">อัตรา Safety Credits</div>
+      <div class="rate-row">
+        <div><div class="rate-name">รายงาน Near Miss ทั่วไป</div><div class="rate-desc">รายงานเหตุการณ์เฉียดอุบัติเหตุ</div></div>
+        <div style="display:flex;align-items:center;gap:10px;"><span class="risk-badge badge-low">Low</span><span class="rate-pts">+20</span></div>
+      </div>
+      <div class="rate-row">
+        <div><div class="rate-name">รายงานพร้อมข้อเสนอแนะ</div><div class="rate-desc">มีแนวทางแก้ไขที่ใช้งานได้จริง</div></div>
+        <div style="display:flex;align-items:center;gap:10px;"><span class="risk-badge badge-medium">Medium</span><span class="rate-pts">+50</span></div>
+      </div>
+      <div class="rate-row">
+        <div><div class="rate-name">รายงานจุดเสี่ยงร้ายแรง</div><div class="rate-desc">ป้องกันอุบัติเหตุใหญ่ / High Risk</div></div>
+        <div style="display:flex;align-items:center;gap:10px;"><span class="risk-badge badge-high">High</span><span class="rate-pts">+100</span></div>
+      </div>
+      <div class="rate-row" style="background:var(--navy);border-radius:10px;padding:12px;margin-top:8px;">
+        <div><div class="rate-name" style="color:var(--amber);">🔄 แลกล้างใบเตือน 1 ใบ</div><div class="rate-desc">ล้างผลกระทบต่อคะแนนประเมินและเงินโบนัส</div></div>
+        <span class="rate-pts" style="color:var(--amber);">300</span>
+      </div>
+    </div>
+
+    <!-- Warnings -->
+    <div class="section-label">ใบเตือนที่มีผล</div>
+    <div id="c-warnings-list"></div>
+
+    <!-- Transactions -->
+    <div class="card fade-up">
+      <div class="section-label">ประวัติ Credits</div>
+      <div id="c-tx-list"></div>
+    </div>
+  </div>
+
+  <!-- bottom nav -->
+  <nav class="bottom-nav">
+    <button class="nav-btn" onclick="navTo('dashboard')">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <span class="nav-label">หน้าหลัก</span>
+    </button>
+    <button class="nav-btn" onclick="navTo('report')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      <span class="nav-label">รายงาน</span>
+    </button>
+    <button class="nav-btn active" onclick="navTo('credits')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span class="nav-label">Credits</span>
+    </button>
+    <button class="nav-btn" onclick="navTo('admin')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      <span class="nav-label">Dashboard</span>
+    </button>
+  </nav>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+  PAGE: ADMIN
+════════════════════════════════════════════════════ -->
+<div id="page-admin" class="page">
+  <div class="topbar">
+    <div class="logo">
+      <div class="logo-icon amber">🛡</div>
+      <div><div class="logo-name">SafeVoice Admin</div><div class="logo-sub">SAFETY OFFICER PANEL</div></div>
+    </div>
+    <div class="admin-badge">จป. PANEL</div>
+  </div>
+
+  <div class="main" style="max-width:760px;">
+    <div class="page-title">Verification Dashboard</div>
+    <div class="page-sub">ตรวจสอบและยืนยันรายงาน Near Miss ก่อนให้คะแนนพนักงาน</div>
+
+    <div class="stats-grid fade-up" id="a-stats"></div>
+
+    <!-- Heinrich -->
+    <div class="heinrich-card fade-up">
+      <div class="h-title">📊 Heinrich's Triangle — สะสมปี 2568</div>
+      <div class="h-triangle">
+        <div class="h-row h-row-major"><span class="h-label" style="color:var(--red);">Major Accident</span><span class="h-count" style="color:var(--red);" id="a-h-major">0</span></div>
+        <div class="h-row h-row-minor"><span class="h-label" style="color:var(--amber);">Minor Incident</span><span class="h-count" style="color:var(--amber);" id="a-h-minor">0</span></div>
+        <div class="h-row h-row-near" ><span class="h-label" style="color:var(--green);">Near Miss Reports</span><span class="h-count" style="color:var(--green);" id="a-h-near">0</span></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:10px;text-align:center;">ทุก 300 Near Miss ที่ถูกแก้ไข = ป้องกันอุบัติเหตุใหญ่ 1 ครั้ง</div>
+    </div>
+
+    <!-- ══ ANALYTICS ══ -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;margin-top:4px;">
+      <div style="font-size:12px;font-weight:700;color:var(--amber);letter-spacing:1.5px;">📊 ANALYTICS</div>
+      <div class="an-period" style="margin:0;">
+        <button class="an-ptab active" onclick="anSetPeriod(3,this)">3 เดือน</button>
+        <button class="an-ptab" onclick="anSetPeriod(6,this)">6 เดือน</button>
+        <button class="an-ptab" onclick="anSetPeriod(12,this)">ปีนี้</button>
+      </div>
+    </div>
+
+    <!-- Row 1: Trend + Top Risk -->
+    <div class="an-grid2">
+      <div class="an-card">
+        <div class="an-title">📈 Near Miss ต่อเดือน</div>
+        <div class="trend-wrap">
+          <svg class="trend-svg" id="an-trend-svg" viewBox="0 0 360 130" preserveAspectRatio="none"></svg>
+          <div class="trend-labels" id="an-trend-labels"></div>
+        </div>
+      </div>
+      <div class="an-card">
+        <div class="an-title">🏆 Top 3 ความเสี่ยงที่พบบ่อย</div>
+        <div id="an-top-risk"></div>
+      </div>
+    </div>
+
+    <!-- Row 2: Donut + Response Time -->
+    <div class="an-grid2">
+      <div class="an-card">
+        <div class="an-title">🗂 สัดส่วนตามประเภท</div>
+        <div class="donut-wrap">
+          <svg class="donut-svg" id="an-donut" viewBox="0 0 100 100"></svg>
+          <div id="an-donut-legend" style="flex:1;"></div>
+        </div>
+      </div>
+      <div class="an-card">
+        <div class="an-title">⏱ เวลาตอบสนอง จป. (ชม.)</div>
+        <div id="an-resp-list"></div>
+        <div style="display:flex;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
+          <div style="flex:1;background:var(--navy);border-radius:8px;padding:8px;text-align:center;">
+            <div style="font-size:18px;font-weight:900;color:var(--green);" id="an-avg-resp">—</div>
+            <div style="font-size:9px;color:var(--muted);">เฉลี่ย ชม.</div>
+          </div>
+          <div style="flex:1;background:var(--navy);border-radius:8px;padding:8px;text-align:center;">
+            <div style="font-size:18px;font-weight:900;color:var(--amber);" id="an-sla">—</div>
+            <div style="font-size:9px;color:var(--muted);">ผ่าน SLA 48ชม.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Heatmap -->
+    <div class="an-card" style="margin-bottom:14px;">
+      <div class="an-title">🗺 Heatmap — ความถี่ Near Miss (วัน × ช่วงเวลา)</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:10px;">ยิ่งสีเข้ม = พบบ่อย</div>
+      <div id="an-heatmap"></div>
+      <div style="display:flex;align-items:center;gap:5px;margin-top:10px;">
+        <span style="font-size:9px;color:var(--muted);">น้อย</span>
+        <div style="width:16px;height:10px;border-radius:2px;" class="hc0"></div>
+        <div style="width:16px;height:10px;border-radius:2px;" class="hc2"></div>
+        <div style="width:16px;height:10px;border-radius:2px;" class="hc4"></div>
+        <div style="width:16px;height:10px;border-radius:2px;" class="hc6"></div>
+        <div style="width:16px;height:10px;border-radius:2px;" class="hc8"></div>
+        <span style="font-size:9px;color:var(--muted);">มาก</span>
+      </div>
+    </div>
+
+    <!-- Hotspot -->
+    <div class="an-card" style="margin-bottom:14px;">
+      <div class="an-title">📍 จุดเสี่ยงสูง (Hotspot)</div>
+      <div id="an-hotspot"></div>
+    </div>
+
+    <!-- divider -->
+    <div style="height:1px;background:var(--border);margin-bottom:16px;"></div>
+
+    <!-- Filter -->
+    <div class="filter-tabs">
+      <button class="filter-tab active" id="af-pending"  onclick="aSetFilter('pending')">⏳ รอตรวจสอบ</button>
+      <button class="filter-tab"        id="af-all"      onclick="aSetFilter('all')">ทั้งหมด</button>
+      <button class="filter-tab"        id="af-high"     onclick="aSetFilter('high')">⚡ สูง</button>
+      <button class="filter-tab"        id="af-verified" onclick="aSetFilter('verified')">✓ ยืนยัน</button>
+      <button class="filter-tab"        id="af-rejected" onclick="aSetFilter('rejected')">✗ ปฏิเสธ</button>
+    </div>
+    <input class="search-input" id="a-search" placeholder="ค้นหาชื่อพนักงาน หรือเนื้อหารายงาน..." oninput="aRenderReports()">
+
+    <div id="a-reports-list"></div>
+  </div>
+</div>
+
+<!-- REDEEM MODAL -->
+<div class="modal-overlay" id="modal-redeem" onclick="cCloseModalOutside(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">ยืนยันการแลก Safety Credits</div>
+    <div class="modal-sub">ตรวจสอบรายละเอียดก่อนยืนยัน</div>
+    <div class="modal-detail">
+      <div class="mdr"><span class="ml">ใบเตือน</span><span class="mr" id="md-id">—</span></div>
+      <div class="mdr"><span class="ml">เรื่อง</span><span class="mr" id="md-issue">—</span></div>
+      <div class="mdr"><span class="ml">Credits ที่ใช้</span><span class="mr red" id="md-cost">−300</span></div>
+      <div class="mdr"><span class="ml">Credits คงเหลือ</span><span class="mr grn" id="md-remain">—</span></div>
+    </div>
+    <div class="modal-note">⚠️ <strong>หมายเหตุ:</strong> ประวัติใบเตือนยังคงอยู่เพื่อการเรียนรู้ แต่ <strong>ผลกระทบต่อคะแนนประเมินและเงินโบนัสสิ้นปีจะถูกยกเลิก</strong></div>
+    <div class="modal-btns">
+      <button class="btn-cancel"  onclick="cCloseModal()">ยกเลิก</button>
+      <button class="btn-confirm" onclick="cConfirmRedeem()">✅ ยืนยันแลก 300 แต้ม</button>
+    </div>
+  </div>
+</div>
+
+<!-- ANALYTICS TOOLTIP -->
+<div class="an-tooltip" id="an-tooltip"></div>
+
+<!-- GLOBAL TOAST -->
+<div class="toast" id="global-toast"></div>
+
+<!-- ════════════════════════════════════════════════════
+  SCRIPT
+════════════════════════════════════════════════════ -->
+<script>
+// ═══════════════════════════════════════════════
+//  CONFIG — ใส่ค่าจริงก่อน deploy
+// ═══════════════════════════════════════════════
+const CFG = {
+  CLAUDE_KEY:   'YOUR_CLAUDE_API_KEY',       // ← Claude API key
+  SUPABASE_URL: 'YOUR_SUPABASE_URL',         // ← https://xxxx.supabase.co
+  SUPABASE_KEY: 'YOUR_SUPABASE_ANON_KEY',    // ← anon/public key
+  REDEEM_COST:  300
+};
+
+// ═══════════════════════════════════════════════
+//  SUPABASE CLIENT (ใช้ REST API โดยตรง ไม่ต้องติดตั้ง npm)
+// ═══════════════════════════════════════════════
+const SB = {
+  // ── headers สำหรับ request ทั่วไป ──
+  headers(token) {
+    const h = {
+      'Content-Type':  'application/json',
+      'apikey':        CFG.SUPABASE_KEY,
+      'Authorization': `Bearer ${token || CFG.SUPABASE_KEY}`
+    };
+    return h;
+  },
+
+  // ── AUTH: Sign in with email ──
+  async signIn(email, password) {
+    const res = await fetch(
+      `${CFG.SUPABASE_URL}/auth/v1/token?grant_type=password`,
+      {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': CFG.SUPABASE_KEY },
+        body:    JSON.stringify({ email, password })
+      }
+    );
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error_description || data.msg || 'Login failed');
+    return data; // { access_token, refresh_token, user }
+  },
+
+  // ── AUTH: Sign out ──
+  async signOut(token) {
+    await fetch(`${CFG.SUPABASE_URL}/auth/v1/logout`, {
+      method: 'POST', headers: this.headers(token)
+    });
+  },
+
+  // ── AUTH: Refresh token ──
+  async refresh(refreshToken) {
+    const res = await fetch(
+      `${CFG.SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,
+      {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': CFG.SUPABASE_KEY },
+        body:    JSON.stringify({ refresh_token: refreshToken })
+      }
+    );
+    const data = await res.json();
+    if (!res.ok) throw new Error('Token refresh failed');
+    return data;
+  },
+
+  // ── SELECT ──
+  async select(table, query = '', token) {
+    const res = await fetch(
+      `${CFG.SUPABASE_URL}/rest/v1/${table}?${query}`,
+      { headers: this.headers(token) }
+    );
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || res.status); }
+    return res.json();
+  },
+
+  // ── INSERT ──
+  async insert(table, body, token) {
+    const res = await fetch(`${CFG.SUPABASE_URL}/rest/v1/${table}`, {
+      method:  'POST',
+      headers: { ...this.headers(token), 'Prefer': 'return=representation' },
+      body:    JSON.stringify(body)
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || res.status); }
+    return res.json();
+  },
+
+  // ── UPDATE ──
+  async update(table, query, body, token) {
+    const res = await fetch(`${CFG.SUPABASE_URL}/rest/v1/${table}?${query}`, {
+      method:  'PATCH',
+      headers: { ...this.headers(token), 'Prefer': 'return=representation' },
+      body:    JSON.stringify(body)
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || res.status); }
+    return res.json();
+  },
+
+  // ── RPC (เรียก Stored Function) ──
+  async rpc(fnName, params, token) {
+    const res = await fetch(`${CFG.SUPABASE_URL}/rest/v1/rpc/${fnName}`, {
+      method:  'POST',
+      headers: this.headers(token),
+      body:    JSON.stringify(params)
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || res.status); }
+    return res.json();
+  }
+};
+
+// ── Token session (เก็บใน sessionStorage ระหว่าง session) ──
+const SESSION = {
+  save(data)  { sessionStorage.setItem('sv_session', JSON.stringify(data)); },
+  load()      { try { return JSON.parse(sessionStorage.getItem('sv_session')||'null'); } catch { return null; } },
+  clear()     { sessionStorage.removeItem('sv_session'); },
+  token()     { return this.load()?.access_token || null; },
+  refresh()   { return this.load()?.refresh_token || null; }
+};
+
+// ═══════════════════════════════════════════════
+//  MOCK DATA
+// ═══════════════════════════════════════════════
+const DB = {
+  users: {
+    'EMP-2847': { id:'EMP-2847', name:'นายสมชาย มั่นคง', dept:'งานบำรุงรักษาระบบไฟฟ้า', credits:170, redeems:1, role:'employee' },
+    'ADMIN-01': { id:'ADMIN-01', name:'นายสมหมาย ใจดี',   dept:'จป.วิชาชีพ กฟจ.ปัตตานี', credits:0,   redeems:0, role:'admin' }
+  },
+  warnings: [
+    { id:'W-001', date:'2568-05-12', issue:'ลืมใส่สายรัดคางหมวกนิรภัย', impact:'ตัดคะแนนประเมิน 5 คะแนน', status:'active' },
+    { id:'W-004', date:'2567-11-03', issue:'แต่งกายผิดระเบียบ (ไม่สวมเสื้อสะท้อนแสง)', impact:'ตัดคะแนนประเมิน 3 คะแนน', status:'redeemed', redeemed_date:'2568-01-15' }
+  ],
+  reports: [
+    { id:'NM-025', date:'2568-07-14', emp_id:'EMP-2847', emp_name:'นายสมชาย มั่นคง', text:'พบแอ่งน้ำขังบริเวณแผงควบคุมไฟฟ้า รั้วกั้นพื้นที่ชำรุด ความเสี่ยงไฟฟ้าลัดวงจร', risk:'High', category:'สภาพแวดล้อมอันตราย', credits:100, summary:'พบน้ำขังใกล้แผงไฟฟ้า เสี่ยงลัดวงจรและอันตรายต่อผู้ปฏิบัติงาน', action:'ปิดกั้นพื้นที่ทันที ระบายน้ำออก และตรวจสอบรั้วก่อนเปิดใช้งาน', status:'pending', photos:2, is_anon:false },
+    { id:'NM-024', date:'2568-07-11', emp_id:null, emp_name:'นิรนาม', text:'เครื่องมือวัดแรงดันไฟฟ้า (Multimeter) แสดงค่าผิดพลาด ตัวเลขกระโดด', risk:'High', category:'อุปกรณ์ชำรุด', credits:0, summary:'Multimeter แสดงค่าไม่ถูกต้อง เสี่ยงต่อการวัดแรงดันผิดพลาด', action:'นำออกจากการใช้งานทันที ส่งสอบเทียบหรือเปลี่ยนใหม่', status:'pending', photos:1, is_anon:true },
+    { id:'NM-023', date:'2568-07-09', emp_id:'EMP-3012', emp_name:'นายวิชัย รักงาน', text:'ป้ายเตือน "อันตรายแรงสูง" ที่เสาโซน C ซีดจางมากจนอ่านไม่ออก', risk:'Medium', category:'สภาพแวดล้อมอันตราย', credits:50, summary:'ป้ายเตือนซีดจาง ความเสี่ยงต่อผู้ที่ไม่คุ้นเคยพื้นที่', action:'เปลี่ยนป้ายภายใน 7 วัน พร้อมตรวจสอบป้ายทั้งหมดในโซน C', status:'pending', photos:1, is_anon:false },
+    { id:'NM-022', date:'2568-07-05', emp_id:'EMP-2847', emp_name:'นายสมชาย มั่นคง', text:'สายรัดนิรภัย (Safety Harness) มีร่องรอยการสึกหรอที่จุดเชื่อมต่อหลัก', risk:'High', category:'อุปกรณ์ชำรุด', credits:100, summary:'พบการสึกหรอที่ Safety Harness ความเสี่ยงสูงสำหรับงานบนที่สูง', action:'หยุดใช้ทันทีและส่งตรวจสอบ จัดหาทดแทนก่อนปฏิบัติงานบนที่สูง', status:'verified', verified_by:'จป.สมหมาย', verified_date:'2568-07-06', photos:3, is_anon:false },
+    { id:'NM-021', date:'2568-07-02', emp_id:'EMP-4455', emp_name:'นายประสิทธิ์ ทำดี', text:'ไฟส่องสว่างบริเวณหน้างานขัดข้องกะทันหัน ต้องทำงานในที่มืดชั่วคราว', risk:'Low', category:'สภาพแวดล้อมอันตราย', credits:20, summary:'ไฟส่องสว่างขัดข้องระหว่างปฏิบัติงาน', action:'จัดเตรียมไฟสำรองฉุกเฉินประจำจุดปฏิบัติงานทุกจุด', status:'rejected', reject_reason:'รายงานไม่ครบถ้วน ไม่ระบุสถานที่และเวลาที่ชัดเจน กรุณารายงานใหม่พร้อมข้อมูลเพิ่มเติม', verified_by:'จป.สมหมาย', verified_date:'2568-07-03', photos:0, is_anon:false },
+    { id:'NM-018', date:'2568-06-01', emp_id:'EMP-2847', emp_name:'นายสมชาย มั่นคง', text:'พบสายไฟชำรุดที่เสาโซน B หมู่ 3 บ้านท่าช้าง ไม่มีป้ายเตือน', risk:'High', category:'อุปกรณ์ชำรุด', credits:100, summary:'พบสายไฟชำรุดในพื้นที่ชุมชน ความเสี่ยงสูง', action:'ปิดกั้นพื้นที่ทันที ติดป้ายเตือน ซ่อมแซมภายใน 24 ชั่วโมง', status:'verified', verified_by:'จป.สมหมาย', verified_date:'2568-06-02', photos:2, is_anon:false },
+    { id:'NM-011', date:'2568-04-22', emp_id:'EMP-2847', emp_name:'นายสมชาย มั่นคง', text:'บันไดอลูมิเนียมมีรอยร้าวที่ขั้น 3 หน้างานติดตั้งหม้อแปลง', risk:'Medium', category:'อุปกรณ์ชำรุด', credits:50, summary:'พบบันไดชำรุดในพื้นที่ปฏิบัติงาน', action:'หยุดใช้ทันทีและส่งซ่อม', status:'verified', verified_by:'จป.สมหมาย', verified_date:'2568-04-23', photos:1, is_anon:false },
+    { id:'NM-007', date:'2568-03-10', emp_id:'EMP-2847', emp_name:'นายสมชาย มั่นคง', text:'ป้ายเตือนโซนแรงดันสูงหลุดออก ไม่มีการแจ้งเตือนพนักงาน', risk:'Low', category:'สภาพแวดล้อมอันตราย', credits:20, summary:'ป้ายเตือนหลุด ความเสี่ยงต่อพนักงาน', action:'ติดป้ายทดแทนทันที', status:'verified', verified_by:'จป.สมหมาย', verified_date:'2568-03-11', photos:0, is_anon:false },
+  ],
+  transactions: [
+    { date:'2568-06-01', desc:'รายงาน NM-018: สายไฟชำรุดโซน B', type:'High Risk', amount:+100 },
+    { date:'2568-04-22', desc:'รายงาน NM-011: บันไดมีรอยร้าว', type:'Medium Risk', amount:+50 },
+    { date:'2568-03-10', desc:'รายงาน NM-007: ป้ายเตือนหลุด', type:'Low Risk', amount:+20 },
+    { date:'2568-01-15', desc:'แลกล้างใบเตือน W-004', type:'Redeem', amount:-300 },
+  ]
+};
+
+// ═══════════════════════════════════════════════
+//  APP STATE
+// ═══════════════════════════════════════════════
+const APP = {
+  currentPage:   'login',
+  selectedRole:  'employee',
+  loggedUser:    null,
+  credits:       0,
+  // Report
+  rIsAnon:    false,
+  rMode:      'voice',
+  rRecording: false,
+  rMediaRec:  null,
+  rBlobs:     [],
+  rTimerInt:  null,
+  rElapsed:   0,
+  rTranscript:'',
+  rPhotos:    [],
+  rAiResult:  null,
+  // Credits
+  cPendingWarningId: null,
+  // Admin
+  aFilter: 'pending',
+  // Dashboard
+  dShowAll: false,
+};
+
+// ═══════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════
+function navTo(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(`page-${page}`).classList.add('active');
+  APP.currentPage = page;
+  window.scrollTo(0,0);
+
+  if      (page === 'dashboard') initDashboard();
+  else if (page === 'credits')   initCredits();
+  else if (page === 'admin')     initAdmin();
+  else if (page === 'report')    initReport();
+}
+
+// ═══════════════════════════════════════════════
+//  LOGIN
+// ═══════════════════════════════════════════════
+function selectRole(role) {
+  APP.selectedRole = role;
+  document.getElementById('role-emp').classList.toggle('selected',   role === 'employee');
+  document.getElementById('role-admin').classList.toggle('selected', role === 'admin');
+}
+
+function fillDemo(role) {
+  // Demo mode — ใช้ Mock เมื่อยังไม่ตั้งค่า Supabase จริง
+  document.getElementById('loginId').value = role === 'admin' ? 'admin@pea-pattani.local' : 'somchai@pea-pattani.local';
+  document.getElementById('loginPw').value = role === 'admin' ? 'admin1234' : 'emp1234';
+  selectRole(role === 'admin' ? 'admin' : 'employee');
+}
+
+// ── doLogin: ลอง Supabase จริงก่อน fallback Mock ──
+async function doLogin() {
+  const emailOrCode = document.getElementById('loginId').value.trim();
+  const pw          = document.getElementById('loginPw').value.trim();
+
+  if (!emailOrCode || !pw) { showToast('กรุณากรอกรหัสพนักงานและรหัสผ่าน', 'amber'); return; }
+
+  const btn = document.querySelector('#page-login .btn-primary');
+  btn.disabled = true; btn.textContent = '⌛ กำลังเข้าสู่ระบบ...';
+
+  try {
+    if (CFG.SUPABASE_URL === 'YOUR_SUPABASE_URL') {
+      throw new Error('demo_mode'); // ใช้ Mock แทน
+    }
+    await loginWithSupabase(emailOrCode, pw);
+  } catch (err) {
+    if (err.message === 'demo_mode' || err.message.includes('fetch')) {
+      loginWithMock(emailOrCode, pw); // Fallback
+    } else {
+      showToast('เข้าสู่ระบบไม่สำเร็จ: ' + err.message, 'red');
+    }
+  } finally {
+    btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ';
+  }
+}
+
+async function loginWithSupabase(emailOrCode, password) {
+  // รองรับทั้ง email จริง และ emp_code (แปลงเป็น email อัตโนมัติ)
+  const email = emailOrCode.includes('@')
+    ? emailOrCode
+    : `${emailOrCode.toLowerCase()}@pea-pattani.local`;
+
+  const authData = await SB.signIn(email, password);
+  SESSION.save(authData);
+
+  // ดึงข้อมูล employee profile
+  const rows = await SB.select(
+    'employees',
+    `auth_id=eq.${authData.user.id}&select=*`,
+    authData.access_token
+  );
+  if (!rows.length) throw new Error('ไม่พบข้อมูลพนักงานในระบบ');
+
+  const emp = rows[0];
+  APP.loggedUser = {
+    id:       emp.id,
+    emp_code: emp.emp_code,
+    name:     emp.full_name,
+    dept:     emp.department,
+    credits:  emp.credits,
+    redeems:  emp.total_redeems,
+    role:     emp.role
+  };
+  APP.credits = emp.credits;
+
+  if (APP.selectedRole === 'safety_officer' &&
+      !['safety_officer','manager'].includes(emp.role)) {
+    SESSION.clear();
+    throw new Error('ไม่มีสิทธิ์เข้าใช้งานในฐานะ จป.');
+  }
+
+  afterLogin(emp.role);
+}
+
+function loginWithMock(id, pw) {
+  // Mock users สำหรับ demo / development
+  const MOCK_USERS = {
+    'EMP-2847':               { name:'นายสมชาย มั่นคง',  dept:'งานบำรุงรักษาระบบไฟฟ้า', role:'employee',       credits:170, redeems:1 },
+    'somchai@pea-pattani.local':{ name:'นายสมชาย มั่นคง',dept:'งานบำรุงรักษาระบบไฟฟ้า', role:'employee',       credits:170, redeems:1 },
+    'ADMIN-01':               { name:'นายสมหมาย ใจดี',   dept:'จป.วิชาชีพ กฟจ.ปัตตานี', role:'safety_officer', credits:0,   redeems:0 },
+    'admin@pea-pattani.local':{ name:'นายสมหมาย ใจดี',   dept:'จป.วิชาชีพ กฟจ.ปัตตานี', role:'safety_officer', credits:0,   redeems:0 },
+  };
+  const VALID_PW = { employee:'emp1234', safety_officer:'admin1234', '1234':'1234' };
+
+  const user = MOCK_USERS[id];
+  if (!user) { showToast('ไม่พบรหัสพนักงานในระบบ', 'red'); return; }
+  if (pw !== '1234' && pw !== (user.role === 'safety_officer' ? 'admin1234' : 'emp1234')) {
+    showToast('รหัสผ่านไม่ถูกต้อง', 'red'); return;
+  }
+  if (APP.selectedRole === 'admin' && user.role === 'employee') {
+    showToast('ไม่มีสิทธิ์เข้าใช้งานในฐานะ จป.', 'red'); return;
+  }
+
+  APP.loggedUser = { id, emp_code: id, name: user.name, dept: user.dept, role: user.role, credits: user.credits, redeems: user.redeems };
+  APP.credits    = user.credits;
+  afterLogin(user.role);
+}
+
+function afterLogin(role) {
+  showToast(`✅ ยินดีต้อนรับ ${APP.loggedUser.name}`);
+  if (['safety_officer','manager'].includes(role)) navTo('admin');
+  else navTo('dashboard');
+}
+
+// ── Logout ──
+async function doLogout() {
+  try { if (SESSION.token()) await SB.signOut(SESSION.token()); } catch {}
+  SESSION.clear();
+  APP.loggedUser = null; APP.credits = 0;
+  navToLogin();
+}
+
+function navToLogin() {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-login').classList.add('active');
+  APP.currentPage = 'login';
+  document.getElementById('loginId').value = '';
+  document.getElementById('loginPw').value = '';
+}
+
+// ── Auto-restore session on load ──
+document.addEventListener('DOMContentLoaded', async () => {
+  const sess = SESSION.load();
+  if (!sess?.access_token || CFG.SUPABASE_URL === 'YOUR_SUPABASE_URL') return;
+  try {
+    // ลอง refresh token ก่อนใช้
+    const fresh = await SB.refresh(sess.refresh_token);
+    SESSION.save({ ...sess, ...fresh });
+    const rows = await SB.select('employees', `auth_id=eq.${fresh.user.id}&select=*`, fresh.access_token);
+    if (!rows.length) return;
+    const emp = rows[0];
+    APP.loggedUser = { id:emp.id, emp_code:emp.emp_code, name:emp.full_name, dept:emp.department, credits:emp.credits, redeems:emp.total_redeems, role:emp.role };
+    APP.credits = emp.credits;
+    afterLogin(emp.role);
+  } catch { SESSION.clear(); }
+});
+
+// ═══════════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════════
+function initDashboard() {
+  const u = APP.loggedUser; if (!u) return;
+  document.getElementById('d-name').textContent = u.name;
+  document.getElementById('d-dept').textContent = u.dept;
+  document.getElementById('d-id').textContent   = u.id;
+
+  const myReports  = DB.reports.filter(r => r.emp_id === u.id);
+  const activeWarn = DB.warnings.filter(w => w.status === 'active');
+
+  animNum('d-ring-num', 0, APP.credits, 800);
+  animNum('d-reports',  0, myReports.length, 600);
+  animNum('d-warns',    0, activeWarn.length, 700);
+  animNum('d-reds',     0, u.redeems, 800);
+
+  const circ = 2*Math.PI*34;
+  const pct  = Math.min((APP.credits % CFG.REDEEM_COST) / CFG.REDEEM_COST, 1);
+  setTimeout(() => { document.getElementById('d-ring').style.strokeDashoffset = circ*(1-pct); }, 150);
+
+  const filled = APP.credits % CFG.REDEEM_COST;
+  document.getElementById('d-prog-txt').textContent = `${filled}/300`;
+  setTimeout(() => { document.getElementById('d-prog-fill').style.width = (filled/CFG.REDEEM_COST*100)+'%'; }, 300);
+
+  // Notification
+  document.getElementById('notifDot').style.display = activeWarn.length ? 'block' : 'none';
+
+  // Warnings
+  const wrapEl = document.getElementById('d-warnings');
+  wrapEl.innerHTML = activeWarn.map(w => `
+    <div class="warning-alert fade-up">
+      <div><div class="wa-tag">⚠ ใบเตือนที่ยังมีผล · ${w.id}</div>
+        <div class="wa-text">${w.issue}</div>
+        <div class="wa-sub">${w.impact} · ${fmtDate(w.date)}</div>
+      </div>
+      <button class="btn-manage" onclick="navTo('credits')">จัดการ</button>
+    </div>`).join('');
+
+  // Chart
+  const months = [
+    {mo:'ม.ค.',n:1},{mo:'ก.พ.',n:0},{mo:'มี.ค.',n:1},{mo:'เม.ย.',n:1},{mo:'พ.ค.',n:0},{mo:'มิ.ย.',n:1},{mo:'ก.ค.',n:1}
+  ];
+  const maxN = Math.max(...months.map(m=>m.n), 1);
+  document.getElementById('d-chart').innerHTML = months.map(m => {
+    const h = (m.n/maxN*100);
+    const col = m.n >= 2 ? 'var(--green)' : m.n === 1 ? 'var(--greendk)' : 'var(--border)';
+    return `<div class="chart-col">
+      <div class="chart-bar" style="height:0%;background:${col};" data-h="${h}"></div>
+      <div class="chart-mo">${m.mo}</div></div>`;
+  }).join('');
+  setTimeout(() => document.querySelectorAll('.chart-bar').forEach(b => b.style.height = b.dataset.h+'%'), 200);
+
+  // History
+  renderDashHistory(myReports);
+  document.getElementById('d-emp-badge-r') && (document.getElementById('d-emp-badge-r').textContent = u.id);
+}
+
+function renderDashHistory(reports) {
+  const PREV = 3;
+  const shown = APP.dShowAll ? reports : reports.slice(0, PREV);
+  const list  = document.getElementById('d-history');
+  const vaBtn = document.getElementById('d-view-all');
+
+  const rMap = {
+    High:   {dot:'dot-high',   badge:'badge-high',   lbl:'⚡ สูง'},
+    Medium: {dot:'dot-medium', badge:'badge-medium', lbl:'⚠ กลาง'},
+    Low:    {dot:'dot-low',    badge:'badge-low',    lbl:'✓ ต่ำ'},
+  };
+
+  list.innerHTML = shown.length ? shown.map(r => {
+    const ri = rMap[r.risk]||rMap.Low;
+    return `<div class="history-item">
+      <div class="risk-dot ${ri.dot}"></div>
+      <div style="flex:1;">
+        <div class="h-text">${r.text}</div>
+        <div class="h-meta">
+          <span class="h-date">${fmtDate(r.date)}</span>
+          <span class="risk-badge ${ri.badge}">${ri.lbl}</span>
+          <span class="${r.status==='verified'?'status-v':'status-p'}">${r.status==='verified'?'✓ ยืนยัน':'⏳ รอ'}</span>
+          ${r.credits?`<span class="h-cred">+${r.credits}</span>`:''}
+        </div>
+      </div></div>`;
+  }).join('') : '<div style="text-align:center;color:var(--muted);padding:24px;">ยังไม่มีรายงาน</div>';
+
+  document.getElementById('d-hist-count').textContent = `ทั้งหมด ${reports.length} รายการ`;
+
+  if (reports.length > PREV) {
+    vaBtn.style.display = 'block';
+    vaBtn.textContent   = APP.dShowAll ? '▲ แสดงน้อยลง' : `▼ ดูทั้งหมด ${reports.length} รายการ`;
+  } else { vaBtn.style.display = 'none'; }
+}
+
+function toggleDashHistory() {
+  APP.dShowAll = !APP.dShowAll;
+  renderDashHistory(DB.reports.filter(r => r.emp_id === APP.loggedUser?.id));
+}
+
+// ═══════════════════════════════════════════════
+//  REPORT
+// ═══════════════════════════════════════════════
+function initReport() {
+  APP.rIsAnon = false; APP.rMode = 'voice'; APP.rRecording = false;
+  APP.rTranscript = ''; APP.rPhotos = []; APP.rAiResult = null; APP.rElapsed = 0;
+  clearInterval(APP.rTimerInt);
+  document.getElementById('r-emp-badge').textContent = APP.loggedUser?.id || '—';
+  // reset UI
+  ['r-anon-btn','r-tab-voice','r-tab-text'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.classList.remove('on','active'); }
+  });
+  document.getElementById('r-tab-voice').classList.add('active');
+  document.getElementById('r-panel-voice').style.display = '';
+  document.getElementById('r-panel-text').style.display  = 'none';
+  document.getElementById('r-rec-btn').textContent = '🎙';
+  document.getElementById('r-rec-btn').classList.remove('recording');
+  document.getElementById('r-rec-status').textContent = 'กดปุ่มด้านล่างเพื่อเริ่มบันทึก';
+  document.getElementById('r-rec-status').className = 'rec-status';
+  document.getElementById('r-timer').textContent = '';
+  document.getElementById('r-timer').className = 'timer';
+  document.getElementById('r-waveform').classList.remove('active');
+  document.getElementById('r-transcript-box').classList.remove('show');
+  document.getElementById('r-text-input').value = '';
+  document.getElementById('r-photo-preview').innerHTML = '';
+  document.getElementById('r-analyze-btn').disabled = true;
+  document.getElementById('r-analyze-section').style.display = '';
+  document.getElementById('r-ai-result').style.display = 'none';
+  document.getElementById('r-success').classList.remove('show');
+  document.getElementById('r-anon-desc').textContent = 'ระบุชื่อ → ได้รับ Safety Credits';
+}
+
+function toggleRAnon() {
+  APP.rIsAnon = !APP.rIsAnon;
+  document.getElementById('r-anon-btn').classList.toggle('on', APP.rIsAnon);
+  document.getElementById('r-anon-desc').textContent = APP.rIsAnon
+    ? 'รายงานแบบนิรนาม — ไม่ได้รับ Safety Credits'
+    : 'ระบุชื่อ → ได้รับ Safety Credits';
+}
+
+function rSwitchMode(m) {
+  APP.rMode = m;
+  document.getElementById('r-tab-voice').classList.toggle('active', m==='voice');
+  document.getElementById('r-tab-text').classList.toggle('active',  m==='text');
+  document.getElementById('r-panel-voice').style.display = m==='voice' ? '' : 'none';
+  document.getElementById('r-panel-text').style.display  = m==='text'  ? '' : 'none';
+  rCheckReady();
+}
+
+function rCheckReady() {
+  const has = APP.rMode==='voice'
+    ? APP.rTranscript.trim().length > 0
+    : document.getElementById('r-text-input').value.trim().length > 0;
+  document.getElementById('r-analyze-btn').disabled = !has;
+}
+
+async function rToggleRecord() {
+  if (!APP.rRecording) await rStartRec(); else rStopRec();
+}
+
+async function rStartRec() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    APP.rBlobs = [];
+    APP.rMediaRec = new MediaRecorder(stream);
+    APP.rMediaRec.ondataavailable = e => { if (e.data.size>0) APP.rBlobs.push(e.data); };
+    APP.rMediaRec.onstop = () => { stream.getTracks().forEach(t=>t.stop()); rProcessAudio(); };
+    APP.rMediaRec.start();
+    APP.rRecording = true; APP.rElapsed = 0;
+
+    const btn = document.getElementById('r-rec-btn');
+    btn.classList.add('recording'); btn.textContent = '⏹';
+    document.getElementById('r-rec-status').textContent = '● กำลังบันทึก...';
+    document.getElementById('r-rec-status').className = 'rec-status recording';
+    document.getElementById('r-waveform').classList.add('active');
+
+    APP.rTimerInt = setInterval(() => {
+      APP.rElapsed++;
+      const m = String(Math.floor(APP.rElapsed/60)).padStart(2,'0');
+      const s = String(APP.rElapsed%60).padStart(2,'0');
+      document.getElementById('r-timer').textContent = `${m}:${s} / 0:30`;
+      document.getElementById('r-timer').className = 'timer active';
+      if (APP.rElapsed >= 30) rStopRec();
+    }, 1000);
+  } catch(e) { showToast('ไม่สามารถเข้าถึงไมโครโฟน: '+e.message, 'red'); }
+}
+
+function rStopRec() {
+  if (!APP.rRecording) return;
+  APP.rRecording = false; clearInterval(APP.rTimerInt);
+  if (APP.rMediaRec?.state !== 'inactive') APP.rMediaRec.stop();
+  const btn = document.getElementById('r-rec-btn');
+  btn.classList.remove('recording'); btn.textContent = '🎙';
+  document.getElementById('r-rec-status').textContent = '⌛ กำลังแปลงเสียง...';
+  document.getElementById('r-waveform').classList.remove('active');
+}
+
+function rProcessAudio() {
+  // Demo: ใช้ข้อความจำลอง — แทนที่ด้วย Whisper API จริงได้เลย
+  const demo = 'พบบันไดอลูมิเนียมมีรอยร้าวที่ขั้นที่สาม ระหว่างงานติดตั้งหม้อแปลง ผมเอาเทปสีแดงพันไว้และแจ้งหัวหน้าให้ส่งซ่อมแล้วครับ';
+  rSetTranscript(demo);
+}
+
+function rSetTranscript(text) {
+  APP.rTranscript = text;
+  document.getElementById('r-transcript-text').textContent = text;
+  document.getElementById('r-transcript-box').classList.add('show');
+  document.getElementById('r-rec-status').textContent = '✓ บันทึกเสร็จแล้ว';
+  document.getElementById('r-rec-status').className = 'rec-status done';
+  rCheckReady();
+}
+
+function rHandlePhotos(e) {
+  const files = Array.from(e.target.files).slice(0,3);
+  APP.rPhotos = files;
+  const prev = document.getElementById('r-photo-preview');
+  prev.innerHTML = '';
+  files.forEach(f => {
+    const reader = new FileReader();
+    reader.onload = ev => { const img = document.createElement('img'); img.src = ev.target.result; prev.appendChild(img); };
+    reader.readAsDataURL(f);
+  });
+}
+
+async function rAnalyze() {
+  const input = APP.rMode==='voice' ? APP.rTranscript : document.getElementById('r-text-input').value.trim();
+  if (!input) return;
+
+  document.getElementById('r-spinner').classList.add('show');
+  document.getElementById('r-analyze-txt').textContent = 'AI กำลังวิเคราะห์...';
+  document.getElementById('r-analyze-btn').disabled = true;
+
+  try {
+    APP.rAiResult = await callClaude(input);
+  } catch {
+    APP.rAiResult = { risk_level:'Medium', category:'อุปกรณ์ชำรุด', summary_th:'พบอุปกรณ์ชำรุดในพื้นที่ปฏิบัติงาน มีความเสี่ยงต่อความปลอดภัยพนักงาน', action:'หยุดใช้อุปกรณ์ทันทีและส่งซ่อม แจ้งหัวหน้างานภายใน 24 ชั่วโมง', credits:50, heinrich_note:'จัดอยู่ใน Unsafe Conditions ใน 300 Near Miss ที่ควรแก้ไขทันที' };
+  } finally {
+    document.getElementById('r-spinner').classList.remove('show');
+    document.getElementById('r-analyze-txt').textContent = '🤖 วิเคราะห์ด้วย AI';
+    document.getElementById('r-analyze-btn').disabled = false;
+  }
+
+  rShowResult(APP.rAiResult);
+}
+
+async function callClaude(text) {
+  if (CFG.CLAUDE_KEY === 'YOUR_CLAUDE_API_KEY') throw new Error('demo');
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':CFG.CLAUDE_KEY,'anthropic-version':'2023-06-01'},
+    body: JSON.stringify({
+      model:'claude-sonnet-4-20250514', max_tokens:800,
+      system:`คุณคือระบบ AI วิเคราะห์ความปลอดภัยในงานไฟฟ้า PEA ตอบกลับเป็น JSON เท่านั้น ไม่มีข้อความอื่น
+{"risk_level":"High|Medium|Low","category":"อุปกรณ์ชำรุด|พฤติกรรมเสี่ยง|สภาพแวดล้อมอันตราย|ระบบงานบกพร่อง","summary_th":"สรุป 1 ประโยค","action":"แนะนำ 1-2 ประโยค","credits":20|50|100,"heinrich_note":"อธิบาย Heinrich 1 ประโยค"}
+Low=20 Medium=50 High=100`,
+      messages:[{role:'user', content:`Near Miss: "${text}"`}]
+    })
+  });
+  const data = await res.json();
+  return JSON.parse((data.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim());
+}
+
+function rShowResult(r) {
+  const rMap = {
+    High:   {cls:'badge-high',   lbl:'⚡ สูง'},
+    Medium: {cls:'badge-medium', lbl:'⚠ กลาง'},
+    Low:    {cls:'badge-low',    lbl:'✓ ต่ำ'},
+  };
+  const ri = rMap[r.risk_level]||rMap.Low;
+  const badge = document.getElementById('r-risk-badge');
+  badge.className = `risk-badge ${ri.cls}`; badge.textContent = ri.lbl;
+  document.getElementById('r-category').textContent  = r.category;
+  document.getElementById('r-credits-val').textContent = `+${r.credits}`;
+  document.getElementById('r-summary').textContent   = r.summary_th;
+  document.getElementById('r-action').textContent    = r.action;
+  document.getElementById('r-heinrich').textContent  = `📊 ${r.heinrich_note}`;
+
+  document.getElementById('r-analyze-section').style.display = 'none';
+  const res = document.getElementById('r-ai-result');
+  res.style.display = 'block';
+  setTimeout(() => res.scrollIntoView({behavior:'smooth', block:'start'}), 100);
+}
+
+function rSubmit() {
+  const credits = APP.rIsAnon ? 0 : APP.rAiResult.credits;
+  APP.credits += credits;
+
+  // Add to DB
+  const newReport = {
+    id: `NM-0${DB.reports.length+1}`,
+    date: new Date().toISOString().split('T')[0],
+    emp_id: APP.rIsAnon ? null : APP.loggedUser?.id,
+    emp_name: APP.rIsAnon ? 'นิรนาม' : APP.loggedUser?.name,
+    text: APP.rMode==='voice' ? APP.rTranscript : document.getElementById('r-text-input').value,
+    risk: APP.rAiResult.risk_level, category: APP.rAiResult.category, credits,
+    summary: APP.rAiResult.summary_th, action: APP.rAiResult.action,
+    status:'pending', photos:APP.rPhotos.length, is_anon: APP.rIsAnon
+  };
+  DB.reports.unshift(newReport);
+  DB.transactions.unshift({ date:newReport.date, desc:`รายงาน ${newReport.id}`, type:`${newReport.risk} Risk`, amount:+credits });
+
+  document.getElementById('r-ai-result').style.display = 'none';
+  document.getElementById('r-succ-cred').textContent  = APP.rIsAnon ? 'รายงานถูกบันทึก (นิรนาม — ไม่ได้รับ Credits)' : `คุณได้รับ +${credits} Safety Credits`;
+  document.getElementById('r-succ-total').textContent = APP.credits;
+  document.getElementById('r-success').classList.add('show');
+  document.getElementById('r-success').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function rSubmit() {
+  const credits = APP.rIsAnon ? 0 : APP.rAiResult.credits;
+  const input   = APP.rMode==='voice' ? APP.rTranscript : document.getElementById('r-text-input').value;
+  const payload = {
+    employee_id:   APP.rIsAnon ? null : APP.loggedUser?.id,
+    is_anonymous:  APP.rIsAnon,
+    report_text:   input,
+    risk_level:    APP.rAiResult.risk_level,
+    category:      APP.rAiResult.category,
+    ai_summary:    APP.rAiResult.summary_th,
+    ai_action:     APP.rAiResult.action,
+    ai_heinrich:   APP.rAiResult.heinrich_note,
+    credits_given: credits,
+    photo_count:   APP.rPhotos.length,
+    status:        'pending'
+  };
+
+  // บันทึกลง Supabase (async, ไม่ block UI)
+  if (CFG.SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+    SB.insert('near_miss_reports', payload, SESSION.token())
+      .then(() => console.log('Report saved to Supabase'))
+      .catch(e  => console.warn('Supabase insert failed:', e.message));
+  }
+
+  // อัปเดต local state ทันที
+  APP.credits += credits;
+  DB.reports.unshift({ id:`NM-${Date.now()}`, date:new Date().toISOString().split('T')[0],
+    emp_id:APP.rIsAnon?null:APP.loggedUser?.id, emp_name:APP.rIsAnon?'นิรนาม':APP.loggedUser?.name,
+    text:input, risk:APP.rAiResult.risk_level, category:APP.rAiResult.category, credits,
+    summary:APP.rAiResult.summary_th, action:APP.rAiResult.action,
+    status:'pending', photos:APP.rPhotos.length, is_anon:APP.rIsAnon });
+  if (credits > 0) DB.transactions.unshift({
+    date:new Date().toISOString().split('T')[0],
+    desc:'รายงาน Near Miss (รอยืนยัน)', type:`${APP.rAiResult.risk_level} Risk`, amount:+credits });
+
+  document.getElementById('r-ai-result').style.display = 'none';
+  document.getElementById('r-succ-cred').textContent  = APP.rIsAnon
+    ? 'รายงานถูกบันทึก (นิรนาม — ไม่ได้รับ Credits)'
+    : `คุณได้รับ +${credits} Safety Credits`;
+  document.getElementById('r-succ-total').textContent = APP.credits;
+  document.getElementById('r-success').classList.add('show');
+  document.getElementById('r-success').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function rReset() { initReport(); }
+
+// ═══════════════════════════════════════════════
+//  CREDITS
+// ═══════════════════════════════════════════════
+function initCredits() {
+  const u = APP.loggedUser; if (!u) return;
+  document.getElementById('c-emp-id').textContent = u.emp_code || u.id;
+  document.getElementById('c-name').textContent   = u.name;
+
+  animNum('c-ring-num', 0, APP.credits, 900);
+  const circ = 2*Math.PI*40;
+  const pct  = Math.min((APP.credits % CFG.REDEEM_COST) / CFG.REDEEM_COST, 1);
+  setTimeout(() => { document.getElementById('c-ring').style.strokeDashoffset = circ*(1-pct); }, 150);
+
+  const filled = APP.credits % CFG.REDEEM_COST;
+  document.getElementById('c-prog-txt').textContent  = `${filled}/300`;
+  setTimeout(() => { document.getElementById('c-prog-fill').style.width = (filled/CFG.REDEEM_COST*100)+'%'; }, 300);
+  document.getElementById('c-prog-note').textContent = filled >= CFG.REDEEM_COST
+    ? '✓ พร้อม Redeem แล้ว!'
+    : `ต้องการอีก ${CFG.REDEEM_COST - filled} แต้ม`;
+
+  cRenderWarnings();
+  cRenderTransactions();
+}
+
+function cRenderWarnings() {
+  const list = document.getElementById('c-warnings-list');
+  if (!DB.warnings.length) { list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px;font-size:13px;">🎉 ไม่มีใบเตือนที่มีผล</div>'; return; }
+
+  list.innerHTML = DB.warnings.map(w => {
+    const isActive  = w.status === 'active';
+    const canRedeem = isActive && APP.credits >= CFG.REDEEM_COST;
+    let action = '';
+    if (w.status === 'redeemed') {
+      action = `<div class="w-redeemed-tag">✓ หักล้างแล้ว ${w.redeemed_date ? '· '+fmtDate(w.redeemed_date) : ''}</div>`;
+    } else if (canRedeem) {
+      action = `<button class="btn-redeem-main" onclick="cOpenModal('${w.id}')">แลก ${CFG.REDEEM_COST} แต้ม</button>
+                <span class="w-cost-note">คงเหลือ: ${APP.credits - CFG.REDEEM_COST}</span>`;
+    } else if (isActive) {
+      action = `<button class="btn-not-enough" disabled>ขาด ${CFG.REDEEM_COST - APP.credits} แต้ม</button>`;
+    }
+    return `<div class="warning-item ${w.status}">
+      <div class="w-accent ${w.status}"></div>
+      <div class="w-inner">
+        <div class="w-id-date">${w.id} · ${fmtDate(w.date)}</div>
+        <div class="w-issue">${w.issue}</div>
+        <div class="w-impact ${w.status}">${w.status==='redeemed'
+          ? '✓ ผลกระทบถูกยกเลิกแล้ว — ประวัติยังคงอยู่เพื่อการเรียนรู้'
+          : '⚠ '+w.impact}</div>
+        <div class="w-actions">${action}</div>
+      </div></div>`;
+  }).join('');
+}
+
+function cRenderTransactions() {
+  document.getElementById('c-tx-list').innerHTML = DB.transactions.map(tx => `
+    <div class="tx-item">
+      <div><div class="tx-desc">${tx.desc}</div><div class="tx-date">${fmtDate(tx.date)}</div><div class="tx-type">${tx.type}</div></div>
+      <div class="tx-amount ${tx.amount>0?'tx-plus':'tx-minus'}">${tx.amount>0?'+':''}${tx.amount}</div>
+    </div>`).join('');
+}
+
+function cOpenModal(wid) {
+  APP.cPendingWarningId = wid;
+  const w = DB.warnings.find(x => x.id === wid); if (!w) return;
+  document.getElementById('md-id').textContent     = w.id;
+  document.getElementById('md-issue').textContent  = w.issue;
+  document.getElementById('md-remain').textContent = `${APP.credits - CFG.REDEEM_COST} แต้ม`;
+  document.getElementById('modal-redeem').classList.add('show');
+}
+function cCloseModal() { document.getElementById('modal-redeem').classList.remove('show'); APP.cPendingWarningId = null; }
+function cCloseModalOutside(e) { if (e.target.id === 'modal-redeem') cCloseModal(); }
+
+async function cConfirmRedeem() {
+  if (!APP.cPendingWarningId) return;
+  const wid = APP.cPendingWarningId;
+  const w   = DB.warnings.find(x => x.id === wid); if (!w) return;
+
+  const btn = document.getElementById('modal-redeem').querySelector('.btn-confirm');
+  btn.disabled = true; btn.textContent = '⌛ กำลังดำเนินการ...';
+
+  try {
+    if (CFG.SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+      const result = await SB.rpc('redeem_warning',
+        { p_employee_id: APP.loggedUser.id, p_warning_id: wid },
+        SESSION.token()
+      );
+      if (!result.ok) throw new Error(result.error);
+      APP.credits = result.new_balance;
+    } else {
+      APP.credits -= CFG.REDEEM_COST; // mock
+    }
+
+    // อัปเดต local state
+    w.status = 'redeemed'; w.redeemed_date = new Date().toISOString().split('T')[0];
+    DB.transactions.unshift({ date:w.redeemed_date, desc:`แลกล้างใบเตือน ${wid}`, type:'Redeem', amount:-CFG.REDEEM_COST });
+
+    cCloseModal(); initCredits();
+    showToast(`✅ หักล้างใบเตือนสำเร็จ — Credits คงเหลือ ${APP.credits} แต้ม`);
+  } catch(e) {
+    showToast('เกิดข้อผิดพลาด: ' + e.message, 'red');
+  } finally {
+    btn.disabled = false; btn.textContent = '✅ ยืนยันแลก 300 แต้ม';
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  ADMIN
+// ═══════════════════════════════════════════════
+function initAdmin() {
+  if (CFG.SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+    aLoadFromSupabase();
+  } else {
+    aRenderStats(); aRenderHeinrich(); aRenderReports();
+    anRenderAll();
+  }
+}
+
+async function aLoadFromSupabase() {
+  try {
+    const rows = await SB.select(
+      'near_miss_reports',
+      'select=id,report_code,report_text,risk_level,category,ai_summary,ai_action,credits_given,photo_count,is_anonymous,status,verified_at,reject_reason,created_at,employees(id,full_name,emp_code)',
+      SESSION.token()
+    );
+    // แปลงให้ตรงกับ format ของ DB.reports
+    DB.reports = rows.map(r => ({
+      id:        r.report_code || r.id,
+      date:      r.created_at?.split('T')[0],
+      emp_id:    r.employees?.id,
+      emp_name:  r.employees?.full_name || 'นิรนาม',
+      text:      r.report_text,
+      risk:      r.risk_level,
+      category:  r.category,
+      credits:   r.credits_given,
+      summary:   r.ai_summary,
+      action:    r.ai_action,
+      status:    r.status,
+      photos:    r.photo_count,
+      is_anon:   r.is_anonymous,
+      verified_by:   r.verified_by,
+      verified_date: r.verified_at?.split('T')[0],
+      reject_reason: r.reject_reason,
+      _uuid:     r.id  // เก็บ UUID จริงไว้ใช้ RPC
+    }));
+  } catch(e) {
+    console.warn('Load from Supabase failed, using mock:', e.message);
+  }
+  aRenderStats(); aRenderHeinrich(); aRenderReports(); anRenderAll();
+}
+
+function aRenderStats() {
+  const pending  = DB.reports.filter(r => r.status==='pending').length;
+  const verified = DB.reports.filter(r => r.status==='verified').length;
+  const rejected = DB.reports.filter(r => r.status==='rejected').length;
+  const highPend = DB.reports.filter(r => r.risk==='High' && r.status==='pending').length;
+  document.getElementById('a-stats').innerHTML = `
+    <div class="stat-card"><div class="sc-num" style="color:var(--amber)">${pending}</div><div class="sc-lbl">รอตรวจสอบ</div><div class="sc-sub" style="color:var(--amber)">ต้องดำเนินการ</div></div>
+    <div class="stat-card"><div class="sc-num" style="color:var(--red)">${highPend}</div><div class="sc-lbl">High Risk รอ</div><div class="sc-sub" style="color:var(--red)">เร่งด่วน</div></div>
+    <div class="stat-card"><div class="sc-num" style="color:var(--green)">${verified}</div><div class="sc-lbl">ยืนยันแล้ว</div><div class="sc-sub" style="color:var(--muted)">ปีนี้</div></div>
+    <div class="stat-card"><div class="sc-num" style="color:var(--muted)">${rejected}</div><div class="sc-lbl">ปฏิเสธ</div><div class="sc-sub" style="color:var(--muted)">ปีนี้</div></div>`;
+}
+
+function aRenderHeinrich() {
+  const n = DB.reports.filter(r => r.status==='verified').length;
+  document.getElementById('a-h-near').textContent  = n;
+  document.getElementById('a-h-minor').textContent = n > 0 ? `~${Math.max(1,Math.floor(n/10))}` : '0';
+  document.getElementById('a-h-major').textContent = '0';
+}
+
+function aSetFilter(f) {
+  APP.aFilter = f;
+  document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`af-${f}`)?.classList.add('active');
+  aRenderReports();
+}
+
+function aRenderReports() {
+  const q = document.getElementById('a-search').value.toLowerCase();
+  let filtered = DB.reports.filter(r => {
+    const mf = APP.aFilter==='all' ? true : APP.aFilter==='high' ? r.risk==='High' : r.status===APP.aFilter;
+    const ms = !q || r.text.toLowerCase().includes(q) || (r.emp_name||'').toLowerCase().includes(q) || r.id.toLowerCase().includes(q);
+    return mf && ms;
+  }).sort((a,b) => {
+    if (a.status==='pending' && b.status!=='pending') return -1;
+    if (a.status!=='pending' && b.status==='pending') return 1;
+    return b.id.localeCompare(a.id);
+  });
+
+  const container = document.getElementById('a-reports-list');
+  if (!filtered.length) { container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px;"><div style="font-size:36px;margin-bottom:10px;">📋</div>ไม่พบรายงาน</div>'; return; }
+
+  const sBadge = { pending:'<span class="badge-pending">⏳ รอ</span>', verified:'<span class="badge-verified">✓ ยืนยัน</span>', rejected:'<span class="badge-rejected">✗ ปฏิเสธ</span>' };
+  const rBadge = { High:'<span class="risk-badge badge-high">⚡ สูง</span>', Medium:'<span class="risk-badge badge-medium">⚠ กลาง</span>', Low:'<span class="risk-badge badge-low">✓ ต่ำ</span>' };
+
+  container.innerHTML = filtered.map(r => {
+    let actions = '';
+    if (r.status==='pending') {
+      actions = `<div class="rc-actions">
+        <button class="btn-verify" onclick="aVerify('${r.id}')">✅ ยืนยัน</button>
+        <button class="btn-reject" onclick="aShowReject('${r.id}')">✗ ปฏิเสธ</button>
+        <button class="btn-detail" onclick="aToggleDetail('${r.id}')">รายละเอียด</button>
+      </div>
+      <div class="reject-wrap" id="arw-${r.id}">
+        <textarea class="reject-ta" id="art-${r.id}" placeholder="ระบุเหตุผลที่ปฏิเสธ..."></textarea>
+        <div class="rej-btns">
+          <button class="btn-cr" onclick="aConfirmReject('${r.id}')">ยืนยันปฏิเสธ</button>
+          <button class="btn-cx" onclick="aHideReject('${r.id}')">ยกเลิก</button>
+        </div>
+      </div>`;
+    } else if (r.status==='verified') {
+      actions = `<div class="done-tag done-v">✅ ยืนยันโดย ${r.verified_by||'จป.'} · ${fmtDate(r.verified_date)}</div>`;
+    } else {
+      actions = `<div class="done-tag done-r">✗ ปฏิเสธโดย ${r.verified_by||'จป.'} · ${fmtDate(r.verified_date)}</div>
+        ${r.reject_reason ? `<div class="reject-reason-note">เหตุผล: ${r.reject_reason}</div>` : ''}`;
+    }
+
+    return `<div class="report-card ${r.risk.toLowerCase()} fade-up">
+      <div class="rc-header">
+        <div class="rc-id-date">${r.id} · ${fmtDate(r.date)}</div>
+        <div class="rc-badges">${rBadge[r.risk]||''}${sBadge[r.status]||''}</div>
+      </div>
+      <div class="rc-text">${r.text}</div>
+      <div class="rc-meta">
+        ${r.is_anon ? '<span class="rc-emp">🔒 นิรนาม</span>' : `<span class="rc-emp">👤 ${r.emp_name}</span>`}
+        <span class="rc-cat">📁 ${r.category}</span>
+        ${r.photos>0 ? `<span style="font-size:11px;color:var(--muted);">📷 ${r.photos}</span>` : ''}
+        ${r.credits>0 ? `<span class="rc-cred">+${r.credits}</span>` : ''}
+      </div>
+      <div class="rc-ai-box" id="ard-${r.id}"><strong style="color:var(--green)">AI สรุป:</strong> ${r.summary||'—'}<br><strong style="color:var(--green)">แนะนำ:</strong> ${r.action||'—'}</div>
+      ${actions}
+    </div>`;
+  }).join('');
+}
+
+function aToggleDetail(id) {
+  const el = document.getElementById(`ard-${id}`);
+  el.style.display = el.style.display==='none'||!el.style.display ? 'block' : 'none';
+}
+
+async function aVerify(id) {
+  const r = DB.reports.find(x=>x.id===id); if (!r) return;
+  const uuid = r._uuid || id; // UUID จริงจาก Supabase หรือ mock id
+
+  try {
+    if (CFG.SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+      const result = await SB.rpc('verify_report',
+        { p_report_id: uuid, p_officer_id: APP.loggedUser.id },
+        SESSION.token()
+      );
+      if (!result.ok) throw new Error(result.error);
+    }
+  } catch(e) {
+    console.warn('Supabase verify failed (mock fallback):', e.message);
+  }
+
+  // อัปเดต local state
+  r.status = 'verified';
+  r.verified_by   = APP.loggedUser?.name || 'จป.';
+  r.verified_date = new Date().toISOString().split('T')[0];
+  if (!r.is_anon && r.emp_id && r.emp_id === APP.loggedUser?.id) APP.credits += r.credits;
+  DB.transactions.unshift({ date:r.verified_date, desc:`รายงาน ${r.id}`, type:`${r.risk} Risk`, amount:+r.credits });
+
+  aRenderStats(); aRenderHeinrich(); aRenderReports();
+  showToast(`✅ ยืนยัน ${r.id} — Credits +${r.credits} เข้าบัญชี ${r.emp_name}`);
+}
+
+function aShowReject(id)  { document.getElementById(`arw-${id}`)?.classList.add('show'); }
+function aHideReject(id)  { document.getElementById(`arw-${id}`)?.classList.remove('show'); }
+
+async function aConfirmReject(id) {
+  const reason = document.getElementById(`art-${id}`)?.value.trim();
+  if (!reason) { showToast('กรุณาระบุเหตุผล', 'red'); return; }
+
+  const r    = DB.reports.find(x=>x.id===id); if (!r) return;
+  const uuid = r._uuid || id;
+
+  try {
+    if (CFG.SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+      const result = await SB.rpc('reject_report',
+        { p_report_id: uuid, p_officer_id: APP.loggedUser.id, p_reason: reason },
+        SESSION.token()
+      );
+      if (!result.ok) throw new Error(result.error);
+    }
+  } catch(e) {
+    console.warn('Supabase reject failed (mock fallback):', e.message);
+  }
+
+  r.status        = 'rejected';
+  r.reject_reason = reason;
+  r.verified_by   = APP.loggedUser?.name || 'จป.';
+  r.verified_date = new Date().toISOString().split('T')[0];
+
+  aRenderStats(); aRenderReports();
+  showToast(`✗ ปฏิเสธ ${r.id} — แจ้งพนักงานเรียบร้อย`, 'red');
+}
+
+// ═══════════════════════════════════════════════
+//  ANALYTICS
+// ═══════════════════════════════════════════════
+const AN_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+let AN_PERIOD = 3;
+
+// Heatmap mock data (วัน × ช่วงเวลา)
+const AN_HEATMAP = {
+  'เช้า (06-12)':     [3,1,2,4,2,1,0],
+  'กลางวัน (12-18)':  [2,3,1,2,5,0,0],
+  'เย็น (18-22)':     [1,2,3,1,2,1,0],
+  'ดึก (22-06)':      [0,1,0,2,1,0,0],
+};
+
+function anSetPeriod(months, btn) {
+  AN_PERIOD = months;
+  document.querySelectorAll('.an-ptab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  anRenderAll();
+}
+
+function anRenderAll() {
+  const reports = anFilterPeriod(DB.reports, AN_PERIOD);
+  anRenderTrend(AN_PERIOD);
+  anRenderTopRisk(reports);
+  anRenderDonut(reports);
+  anRenderHeatmap();
+  anRenderHotspot(reports);
+  anRenderRespTime(reports);
+}
+
+function anFilterPeriod(reports, months) {
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - months);
+  return reports.filter(r => {
+    const d = r.date ? new Date(r.date.replace(/-/g,'/')) : null;
+    return d && d >= cutoff;
+  });
+}
+
+// ── Trend ──
+function anRenderTrend(months) {
+  const nowM   = new Date().getMonth();
+  const labels = [], data = [];
+  for (let i = months - 1; i >= 0; i--) {
+    const mi = (nowM - i + 12) % 12;
+    labels.push(AN_MONTHS[mi]);
+    // นับจาก DB.reports จริง
+    data.push(DB.reports.filter(r => {
+      if (!r.date) return false;
+      const d = new Date(r.date.replace(/-/g,'/'));
+      return d.getMonth() === mi;
+    }).length);
+  }
+
+  const W = 360, H = 130, PX = 24, PY = 16;
+  const maxV = Math.max(...data, 1);
+  const svg  = document.getElementById('an-trend-svg');
+  if (!svg) return;
+
+  // Grid
+  let g = '';
+  for (let i = 0; i <= 3; i++) {
+    const y = PY + (H - PY*2) * (1 - i/3);
+    const v = Math.round(maxV * i / 3);
+    g += `<line x1="${PX}" y1="${y.toFixed(1)}" x2="${W-PX}" y2="${y.toFixed(1)}" stroke="#1a3050" stroke-width="1"/>
+          <text x="${PX-3}" y="${(y+3).toFixed(1)}" fill="#5a8aaa" font-size="8" text-anchor="end">${v}</text>`;
+  }
+
+  const pts = data.map((v, i) => [
+    PX + (i / Math.max(data.length-1,1)) * (W - PX*2),
+    PY + (H - PY*2) * (1 - v/maxV)
+  ]);
+
+  const line = pts.map((p,i) => `${i===0?'M':'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  const area = `${line} L${pts[pts.length-1][0].toFixed(1)},${H-PY} L${PX},${H-PY} Z`;
+
+  const dots = pts.map((p,i) => {
+    const hi = data[i] >= maxV * 0.7 && maxV > 0;
+    const col = hi ? '#EF4444' : '#00C96A';
+    return `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="4.5"
+      fill="${col}" stroke="var(--navy)" stroke-width="2" style="cursor:pointer"
+      onmousemove="anShowTip(event,'${labels[i]}: ${data[i]} รายงาน')"
+      onmouseleave="anHideTip()"/>
+    ${data[i]>0?`<text x="${p[0].toFixed(1)}" y="${(p[1]-8).toFixed(1)}" fill="${col}" font-size="9" text-anchor="middle" font-weight="700">${data[i]}</text>`:''}`;
+  }).join('');
+
+  svg.innerHTML = `<defs><linearGradient id="tg" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#00C96A" stop-opacity="0.3"/>
+    <stop offset="100%" stop-color="#00C96A" stop-opacity="0.02"/></linearGradient></defs>
+    ${g}<path d="${area}" fill="url(#tg)"/>
+    <path d="${line}" fill="none" stroke="#00C96A" stroke-width="2.5" stroke-linejoin="round"/>
+    ${dots}`;
+
+  document.getElementById('an-trend-labels').innerHTML =
+    labels.map(l => `<span class="trend-lbl">${l}</span>`).join('');
+}
+
+function anShowTip(e, text) {
+  const t = document.getElementById('an-tooltip');
+  t.textContent = text; t.style.opacity = '1';
+  t.style.left = (e.clientX + 12) + 'px';
+  t.style.top  = (e.clientY - 28) + 'px';
+}
+function anHideTip() { document.getElementById('an-tooltip').style.opacity = '0'; }
+
+// ── Top Risk ──
+function anRenderTopRisk(reports) {
+  const el = document.getElementById('an-top-risk'); if (!el) return;
+  const counter = {};
+  reports.forEach(r => {
+    const key = r.category + '||' + (r.location || r.text?.slice(0,20) || '—');
+    if (!counter[key]) counter[key] = { cat: r.category, loc: r.location || r.text?.slice(0,20) || '—', n: 0, risk: r.risk };
+    counter[key].n++;
+    if (r.risk === 'High') counter[key].risk = 'High';
+  });
+  const top = Object.values(counter).sort((a,b) => b.n-a.n).slice(0,3);
+  const maxN = top[0]?.n || 1;
+  const rCol = { High:'#EF4444', Medium:'#F59E0B', Low:'#00C96A' };
+  const rkCls = ['rk1','rk2','rk3'];
+
+  el.innerHTML = top.map((x,i) => `
+    <div class="tr-row">
+      <div class="tr-rank ${rkCls[i]}">${i+1}</div>
+      <div class="tr-info">
+        <div class="tr-name" title="${x.loc}">${x.loc}</div>
+        <div class="tr-cat">${x.cat}</div>
+      </div>
+      <div class="tr-count" style="color:${rCol[x.risk]};">${x.n}</div>
+    </div>`).join('') || '<div style="color:var(--muted);font-size:12px;padding:12px 0;">ยังไม่มีข้อมูล</div>';
+}
+
+// ── Donut ──
+function anRenderDonut(reports) {
+  const svgEl = document.getElementById('an-donut');
+  const legEl = document.getElementById('an-donut-legend');
+  if (!svgEl || !legEl) return;
+
+  const cats = {};
+  reports.forEach(r => { cats[r.category] = (cats[r.category]||0)+1; });
+  const total   = reports.length || 1;
+  const entries = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+  const colors  = ['#00C96A','#F59E0B','#EF4444','#5A8AAA'];
+  const R=38, CX=50, CY=50, IN=22;
+
+  let angle = -Math.PI/2, paths = '';
+  entries.forEach(([cat,n],i) => {
+    const sw = (n/total)*Math.PI*2;
+    const x1=CX+R*Math.cos(angle), y1=CY+R*Math.sin(angle);
+    const x2=CX+R*Math.cos(angle+sw), y2=CY+R*Math.sin(angle+sw);
+    const xi1=CX+IN*Math.cos(angle), yi1=CY+IN*Math.sin(angle);
+    const xi2=CX+IN*Math.cos(angle+sw), yi2=CY+IN*Math.sin(angle+sw);
+    const lg = sw > Math.PI ? 1 : 0;
+    paths += `<path d="M${xi1.toFixed(1)},${yi1.toFixed(1)} L${x1.toFixed(1)},${y1.toFixed(1)}
+      A${R},${R} 0 ${lg},1 ${x2.toFixed(1)},${y2.toFixed(1)}
+      L${xi2.toFixed(1)},${yi2.toFixed(1)}
+      A${IN},${IN} 0 ${lg},0 ${xi1.toFixed(1)},${yi1.toFixed(1)} Z"
+      fill="${colors[i%colors.length]}" opacity="0.9"/>`;
+    angle += sw;
+  });
+  paths += `<text x="${CX}" y="${CY+4}" text-anchor="middle" fill="white" font-size="10" font-weight="700">${total}</text>
+    <text x="${CX}" y="${CY+14}" text-anchor="middle" fill="#5a8aaa" font-size="7">รายงาน</text>`;
+  svgEl.innerHTML = paths;
+
+  legEl.innerHTML = entries.map(([cat,n],i) => `
+    <div class="leg-item">
+      <div class="leg-dot" style="background:${colors[i%colors.length]};"></div>
+      <span style="flex:1;color:var(--ice);font-size:11px;">${cat}</span>
+      <span style="font-weight:700;color:${colors[i%colors.length]};font-size:11px;">${Math.round(n/total*100)}%</span>
+    </div>`).join('');
+}
+
+// ── Heatmap ──
+function anRenderHeatmap() {
+  const el = document.getElementById('an-heatmap'); if (!el) return;
+  const days  = ['จ.','อ.','พ.','พฤ.','ศ.','ส.','อา.'];
+  const slots = Object.keys(AN_HEATMAP);
+  let maxV = 0;
+  slots.forEach(s => AN_HEATMAP[s].forEach(v => { if(v>maxV) maxV=v; }));
+  const hc = v => { if(!v) return 'hc0'; return 'hc'+Math.min(Math.ceil(v/Math.max(maxV,1)*8),8); };
+
+  const colHeader = `<div class="hm-col-labels">${days.map(d=>`<div class="hm-col-lbl">${d}</div>`).join('')}</div>`;
+  const rows = slots.map(s => {
+    const cells = AN_HEATMAP[s].map((v,di) =>
+      `<div class="hm-cell ${hc(v)}"
+        onmousemove="anShowTip(event,'${days[di]} ${s}: ${v} รายงาน')"
+        onmouseleave="anHideTip()">${v||''}</div>`
+    ).join('');
+    return `<div class="hm-row"><div class="hm-row-lbl">${s}</div>${cells}</div>`;
+  }).join('');
+  el.innerHTML = colHeader + rows;
+}
+
+// ── Hotspot ──
+function anRenderHotspot(reports) {
+  const el = document.getElementById('an-hotspot'); if (!el) return;
+  const locs = {};
+  reports.forEach(r => {
+    const key = r.location || r.text?.slice(0,24) || 'ไม่ระบุ';
+    if (!locs[key]) locs[key] = { name: key, n: 0, high: 0, cats: new Set() };
+    locs[key].n++; locs[key].cats.add(r.category);
+    if (r.risk==='High') locs[key].high++;
+  });
+  const sorted = Object.values(locs).sort((a,b)=>b.n-a.n).slice(0,5);
+  const lvl = (high,n) => {
+    const r = high/n;
+    if (r>=0.6) return {cls:'ri',icon:'🔴',col:'var(--red)',lbl:'เสี่ยงสูง'};
+    if (r>=0.3) return {cls:'am',icon:'🟡',col:'var(--amber)',lbl:'เสี่ยงปานกลาง'};
+    return             {cls:'gr',icon:'🟢',col:'var(--green)',lbl:'เสี่ยงต่ำ'};
+  };
+
+  el.innerHTML = sorted.map(loc => {
+    const lv = lvl(loc.high, loc.n);
+    return `<div class="hs-item">
+      <div class="hs-icon ${lv.cls}">${lv.icon}</div>
+      <div class="hs-info">
+        <div class="hs-name" title="${loc.name}">${loc.name}</div>
+        <div class="hs-sub">${lv.lbl} · ${[...loc.cats].join(', ')}</div>
+      </div>
+      <div class="hs-cnt" style="color:${lv.col};">${loc.n}</div>
+    </div>`;
+  }).join('') || '<div style="color:var(--muted);font-size:12px;padding:12px 0;">ยังไม่มีข้อมูล</div>';
+}
+
+// ── Response Time ──
+function anRenderRespTime(reports) {
+  const el = document.getElementById('an-resp-list'); if (!el) return;
+  const verified = reports.filter(r => r.verified_hours != null);
+  if (!verified.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:11px;">ยังไม่มีข้อมูล verified</div>';
+    return;
+  }
+  const avg = Math.round(verified.reduce((s,r)=>s+r.verified_hours,0)/verified.length);
+  const sla = Math.round(verified.filter(r=>r.verified_hours<=48).length/verified.length*100);
+  document.getElementById('an-avg-resp').textContent = avg;
+  document.getElementById('an-sla').textContent      = sla+'%';
+
+  const byRisk = { High:[], Medium:[], Low:[] };
+  verified.forEach(r => byRisk[r.risk]?.push(r.verified_hours));
+  const rCol = { High:'#EF4444', Medium:'#F59E0B', Low:'#00C96A' };
+
+  el.innerHTML = Object.entries(byRisk).map(([risk,hrs]) => {
+    if (!hrs.length) return '';
+    const avgH = Math.round(hrs.reduce((s,h)=>s+h,0)/hrs.length);
+    const pct  = Math.min(avgH/72*100, 100);
+    return `<div class="rt-row">
+      <div class="rt-lbl">${risk} (${hrs.length})</div>
+      <div class="rt-bar-bg"><div class="rt-bar-fill" data-w="${pct}" style="width:0%;background:${rCol[risk]};"></div></div>
+      <div class="rt-val" style="color:${rCol[risk]};">${avgH}ชม.</div>
+    </div>`;
+  }).join('');
+
+  setTimeout(() => {
+    document.querySelectorAll('.rt-bar-fill').forEach(b => { b.style.width = b.dataset.w+'%'; });
+  }, 100);
+}
+
+// ═══════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════
+function animNum(id, from, to, dur) {
+  const el = document.getElementById(id); if (!el) return;
+  const step = (to-from)/(dur/16); let cur = from;
+  const tick = setInterval(() => {
+    cur += step;
+    if (cur >= to) { cur = to; clearInterval(tick); }
+    el.textContent = Math.round(cur);
+  }, 16);
+}
+
+function fmtDate(s) {
+  if (!s) return '';
+  const d = new Date(s.replace(/-/g,'/'));
+  return isNaN(d) ? s : d.toLocaleDateString('th-TH', { year:'numeric', month:'short', day:'numeric' });
+}
+
+function showToast(msg, type='') {
+  const t = document.getElementById('global-toast');
+  t.textContent = msg;
+  t.className = `toast show${type?' '+type:''}`;
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+</script>
+</body>
+</html>
