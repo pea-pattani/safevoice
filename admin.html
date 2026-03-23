@@ -336,12 +336,12 @@ body{font-family:'Sarabun',sans-serif;background:var(--navy);color:var(--white);
 // ══ DATA ══
 const DB = {
   reports:[
-    {id:'NM-025',date:'2568-07-14',emp_id:'EMP-2847',emp_name:'นายสมชาย มั่นคง',text:'พบแอ่งน้ำขังบริเวณแผงควบคุมไฟฟ้า รั้วกั้นพื้นที่ชำรุด ความเสี่ยงไฟฟ้าลัดวงจร',risk:'High',category:'สภาพแวดล้อมอันตราย',credits:100,status:'pending',is_anon:false,photos:2},
+    {id:'NM-025',date:'2568-07-14',emp_id:'278629',emp_name:'นางนฤมล เจริญพานิช',text:'พบแอ่งน้ำขังบริเวณแผงควบคุมไฟฟ้า รั้วกั้นพื้นที่ชำรุด ความเสี่ยงไฟฟ้าลัดวงจร',risk:'High',category:'สภาพแวดล้อมอันตราย',credits:100,status:'pending',is_anon:false,photos:2},
     {id:'NM-024',date:'2568-07-11',emp_id:null,emp_name:'นิรนาม',text:'เครื่องมือวัดแรงดันไฟฟ้า (Multimeter) แสดงค่าผิดพลาด ตัวเลขกระโดด',risk:'High',category:'อุปกรณ์ชำรุด',credits:0,status:'pending',is_anon:true,photos:1},
-    {id:'NM-023',date:'2568-07-09',emp_id:'EMP-3012',emp_name:'นายวิชัย รักงาน',text:'ป้ายเตือน "อันตรายแรงสูง" ที่เสาโซน C ซีดจางมากจนอ่านไม่ออก',risk:'Medium',category:'สภาพแวดล้อมอันตราย',credits:50,status:'pending',is_anon:false,photos:1},
-    {id:'NM-022',date:'2568-07-05',emp_id:'EMP-2847',emp_name:'นายสมชาย มั่นคง',text:'Safety Harness มีร่องรอยการสึกหรอที่จุดเชื่อมต่อหลัก',risk:'High',category:'อุปกรณ์ชำรุด',credits:100,status:'verified',verified_by:'จป.สมหมาย',verified_date:'2568-07-06',is_anon:false,photos:3},
-    {id:'NM-021',date:'2568-07-02',emp_id:'EMP-4455',emp_name:'นายประสิทธิ์ ทำดี',text:'ไฟส่องสว่างบริเวณหน้างานขัดข้องกะทันหัน ต้องทำงานในที่มืดชั่วคราว',risk:'Low',category:'สภาพแวดล้อมอันตราย',credits:20,status:'rejected',verified_by:'จป.สมหมาย',verified_date:'2568-07-03',reject_reason:'รายงานไม่ครบถ้วน ไม่ระบุสถานที่และเวลา',is_anon:false,photos:0},
-    {id:'NM-018',date:'2568-06-01',emp_id:'EMP-2847',emp_name:'นายสมชาย มั่นคง',text:'พบสายไฟชำรุดที่เสาโซน B หมู่ 3 ไม่มีป้ายเตือน',risk:'High',category:'อุปกรณ์ชำรุด',credits:100,status:'verified',verified_by:'จป.สมหมาย',verified_date:'2568-06-02',is_anon:false,photos:2},
+    {id:'NM-023',date:'2568-07-09',emp_id:'303644',emp_name:'นายสาโรจน์ แนวบรรทัด',text:'ป้ายเตือน "อันตรายแรงสูง" ที่เสาโซน C ซีดจางมากจนอ่านไม่ออก',risk:'Medium',category:'สภาพแวดล้อมอันตราย',credits:50,status:'pending',is_anon:false,photos:1},
+    {id:'NM-022',date:'2568-07-05',emp_id:'278629',emp_name:'นางนฤมล เจริญพานิช',text:'Safety Harness มีร่องรอยการสึกหรอที่จุดเชื่อมต่อหลัก',risk:'High',category:'อุปกรณ์ชำรุด',credits:100,status:'verified',verified_by:'นายอนัน รัตนวรรณ',verified_date:'2568-07-06',is_anon:false,photos:3},
+    {id:'NM-021',date:'2568-07-02',emp_id:'449602',emp_name:'นายสัญญา ชื่นบาน',text:'ไฟส่องสว่างบริเวณหน้างานขัดข้องกะทันหัน ต้องทำงานในที่มืดชั่วคราว',risk:'Low',category:'สภาพแวดล้อมอันตราย',credits:20,status:'rejected',verified_by:'นายอนัน รัตนวรรณ',verified_date:'2568-07-03',reject_reason:'รายงานไม่ครบถ้วน ไม่ระบุสถานที่และเวลา',is_anon:false,photos:0},
+    {id:'NM-018',date:'2568-06-01',emp_id:'278629',emp_name:'นางนฤมล เจริญพานิช',text:'พบสายไฟชำรุดที่เสาโซน B หมู่ 3 ไม่มีป้ายเตือน',risk:'High',category:'อุปกรณ์ชำรุด',credits:100,status:'verified',verified_by:'นายอนัน รัตนวรรณ',verified_date:'2568-06-02',is_anon:false,photos:2},
   ],
   employees:[
     {id:'278629',name:'นางนฤมล เจริญพานิช',dept:'กฟจ.ปัตตานี',role:'employee',credits:0,redeems:0},
@@ -452,8 +452,8 @@ const DB = {
     {id:'515665',name:'นายภูรีทัศน์ สุวรรณพรหม',dept:'กฟส.หนองจิก',role:'employee',credits:0,redeems:0}
   ],
   warnings:[
-    {id:'W-001',emp_id:'EMP-2847',emp_name:'นายสมชาย มั่นคง',date:'2568-05-12',issue:'ลืมใส่สายรัดคางหมวกนิรภัย',impact:'ใบเตือนครั้งที่ 1',status:'active'},
-    {id:'W-004',emp_id:'EMP-2847',emp_name:'นายสมชาย มั่นคง',date:'2567-11-03',issue:'แต่งกายผิดระเบียบ',impact:'ใบเตือนครั้งที่ 1',status:'redeemed',redeemed_date:'2568-01-15'},
+    {id:'W-001',emp_id:'278629',emp_name:'นางนฤมล เจริญพานิช',date:'2568-05-12',issue:'ลืมใส่สายรัดคางหมวกนิรภัย',impact:'ใบเตือนครั้งที่ 1',status:'active'},
+    {id:'W-004',emp_id:'278629',emp_name:'นางนฤมล เจริญพานิช',date:'2567-11-03',issue:'แต่งกายผิดระเบียบ',impact:'ใบเตือนครั้งที่ 1',status:'redeemed',redeemed_date:'2568-01-15'},
   ]
 };
 const APP={vf:'pending',pendingReset:null};
