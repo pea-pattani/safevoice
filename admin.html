@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>SafeVoice Admin</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIyIiBmaWxsPSIjMEExNjI4Ii8+PHJlY3QgeD0iMzgiIHk9IjE1IiB3aWR0aD0iMjQiIGhlaWdodD0iNDIiIHJ4PSIxMiIgZmlsbD0iIzAwQzk2QSIvPjxwYXRoIGQ9Ik0yNSA1MiBRMjUgNzIgNTAgNzIgUTc1IDcyIDc1IDUyIiBzdHJva2U9IiMwMEM5NkEiIHN0cm9rZS13aWR0aD0iNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PGxpbmUgeDE9IjUwIiB5MT0iNzIiIHgyPSI1MCIgeTI9Ijg1IiBzdHJva2U9IiMwMEM5NkEiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PGxpbmUgeDE9IjM4IiB5MT0iODUiIHgyPSI2MiIgeTI9Ijg1IiBzdHJva2U9IiMwMEM5NkEiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PC9zdmc+">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;800&display=swap');
+:root{--navy:#0A1628;--dark:#0D1E35;--card:#0F2540;--border:#1A3050;--green:#00C96A;--greendk:#00A855;--amber:#F59E0B;--red:#EF4444;--white:#E8F4FF;--muted:#5A8AAA;--ice:#C8E6FF;--gold:#FFD700;}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{font-family:'Sarabun',sans-serif;background:var(--navy);color:var(--white);display:flex;flex-direction:column;}
+
+/* TOPBAR */
+.topbar{background:var(--dark);border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:54px;position:sticky;top:0;z-index:100;flex-shrink:0;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-icon{width:30px;height:30px;background:linear-gradient(135deg,var(--green),var(--greendk));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;}
+.logo-name{font-size:15px;font-weight:700;}
+.logo-sub{font-size:9px;color:var(--muted);letter-spacing:2px;}
+.tb-right{display:flex;align-items:center;gap:8px;}
+.tb-user{font-size:12px;color:var(--muted);padding:0 10px;border-right:1px solid var(--border);}
+.tb-btn{background:transparent;border:1.5px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--muted);font-family:'Sarabun',sans-serif;font-size:12px;cursor:pointer;transition:all .2s;}
+.tb-btn:hover{border-color:var(--green);color:var(--green);}
+.tb-btn.red{border-color:var(--red);color:var(--red);}
+
+/* LAYOUT */
+.layout{display:flex;flex:1;overflow:hidden;min-height:0;}
+
+/* SIDEBAR */
+.sidebar{width:190px;background:var(--dark);border-right:1px solid var(--border);padding:14px 10px;flex-shrink:0;overflow-y:auto;display:flex;flex-direction:column;gap:2px;}
+.sb-section{font-size:9px;color:var(--muted);letter-spacing:2px;font-weight:700;padding:10px 10px 5px;margin-top:4px;}
+.sb-section:first-child{padding-top:0;}
+.tab-btn{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:9px;cursor:pointer;border:none;background:transparent;color:var(--muted);font-family:'Sarabun',sans-serif;font-size:13px;font-weight:600;width:100%;text-align:left;transition:all .2s;position:relative;}
+.tab-btn:hover{background:var(--card);color:var(--white);}
+.tab-btn.active{background:var(--card);color:var(--green);border:1px solid var(--border);}
+.tab-btn.active::before{content:'';position:absolute;left:0;top:25%;bottom:25%;width:3px;background:var(--green);border-radius:0 2px 2px 0;}
+.tab-icon{font-size:15px;flex-shrink:0;}
+.badge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center;}
+.badge.amber{background:var(--amber);color:#1a0a00;}
+
+/* CONTENT */
+.content{flex:1;overflow-y:auto;padding:22px 24px;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;animation:fadeUp .3s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* SHARED */
+.panel-title{font-size:20px;font-weight:800;margin-bottom:3px;}
+.panel-sub{font-size:12px;color:var(--muted);margin-bottom:18px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:16px 18px;margin-bottom:14px;}
+.section-label{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:2px;margin-bottom:10px;}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 15px;}
+.stat-num{font-size:26px;font-weight:900;line-height:1;}
+.stat-lbl{font-size:10px;color:var(--muted);letter-spacing:1px;margin-top:3px;}
+.stat-sub{font-size:10px;margin-top:2px;}
+
+/* REPORT CARDS */
+.rc{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 15px;margin-bottom:8px;}
+.rc.high{border-left:4px solid var(--red);}
+.rc.medium{border-left:4px solid var(--amber);}
+.rc.low{border-left:4px solid var(--green);}
+.rc-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;}
+.rc-id{font-size:10px;color:var(--muted);font-family:monospace;}
+.rc-badges{display:flex;gap:4px;}
+.rc-text{font-size:13px;line-height:1.55;margin-bottom:7px;}
+.rc-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-bottom:9px;}
+.rc-cred{margin-left:auto;font-size:12px;font-weight:700;color:var(--gold);}
+.rc-actions{display:flex;gap:7px;}
+
+/* BUTTONS */
+.btn-v{flex:1;background:linear-gradient(135deg,var(--green),var(--greendk));border:none;border-radius:8px;padding:9px;color:#001a08;font-family:'Sarabun',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
+.btn-r{flex:1;background:transparent;border:1.5px solid var(--red);border-radius:8px;padding:9px;color:var(--red);font-family:'Sarabun',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;}
+.btn-r:hover{background:var(--red);color:#fff;}
+.btn-d{background:transparent;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--muted);font-family:'Sarabun',sans-serif;font-size:12px;cursor:pointer;}
+.btn-prim{background:linear-gradient(135deg,var(--green),var(--greendk));border:none;border-radius:10px;padding:11px 20px;color:#001a08;font-family:'Sarabun',sans-serif;font-size:14px;font-weight:700;cursor:pointer;}
+.btn-amber{background:linear-gradient(135deg,var(--amber),#d97706);border:none;border-radius:10px;padding:11px 20px;color:#1a0a00;font-family:'Sarabun',sans-serif;font-size:14px;font-weight:700;cursor:pointer;}
+.btn-sm{background:transparent;border:1.5px solid var(--border);border-radius:8px;padding:5px 10px;color:var(--muted);font-family:'Sarabun',sans-serif;font-size:11px;cursor:pointer;transition:all .2s;}
+.btn-sm:hover{border-color:var(--green);color:var(--green);}
+.btn-sm.red{border-color:var(--red);color:var(--red);}
+
+/* DONE STATES */
+.done-v{background:#00c96a11;border:1px solid #00c96a33;color:var(--green);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;text-align:center;margin-bottom:5px;}
+.done-r{background:#ef444411;border:1px solid #ef444433;color:var(--red);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;text-align:center;margin-bottom:5px;}
+.reject-note{font-size:11px;color:var(--muted);background:var(--navy);border-radius:6px;padding:8px;}
+.reject-wrap{display:none;margin-top:9px;}
+.reject-wrap.show{display:block;}
+.reject-ta{width:100%;background:var(--navy);border:1px solid var(--red);border-radius:8px;padding:10px;color:var(--white);font-family:'Sarabun',sans-serif;font-size:13px;resize:none;min-height:60px;outline:none;margin-bottom:7px;}
+.rej-btns{display:flex;gap:7px;}
+.btn-cr{flex:1;background:var(--red);border:none;border-radius:8px;padding:9px;color:#fff;font-family:'Sarabun',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
+.btn-cx{flex:1;background:transparent;border:1.5px solid var(--border);border-radius:8px;padding:9px;color:var(--muted);font-family:'Sarabun',sans-serif;font-size:13px;cursor:pointer;}
+
+/* BADGES */
+.rb{font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;}
+.rb-h{background:#ef444422;border:1px solid var(--red);color:var(--red);}
+.rb-m{background:#f59e0b22;border:1px solid var(--amber);color:var(--amber);}
+.rb-l{background:#00c96a22;border:1px solid var(--green);color:var(--green);}
+.rb-p{background:#f59e0b22;border:1px solid var(--amber);color:var(--amber);font-size:10px;padding:2px 8px;border-radius:5px;}
+.rb-ok{background:#00c96a22;border:1px solid var(--green);color:var(--green);font-size:10px;padding:2px 8px;border-radius:5px;}
+.rb-no{background:#ef444422;border:1px solid var(--red);color:var(--red);font-size:10px;padding:2px 8px;border-radius:5px;}
+
+/* FILTERS */
+.ftabs{display:flex;gap:6px;margin-bottom:11px;flex-wrap:wrap;}
+.ftab{padding:5px 13px;border-radius:20px;background:transparent;border:1.5px solid var(--border);color:var(--muted);font-family:'Sarabun',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;}
+.ftab.active{background:var(--amber);border-color:var(--amber);color:#1a0a00;}
+.search{width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--white);font-family:'Sarabun',sans-serif;font-size:13px;outline:none;margin-bottom:11px;}
+.search:focus{border-color:var(--amber);}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;font-size:13px;}
+.tbl th{font-size:10px;color:var(--muted);letter-spacing:1px;padding:9px 12px;text-align:left;border-bottom:1px solid var(--border);}
+.tbl td{padding:12px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:#ffffff04;}
+.cpill{display:inline-block;background:#00c96a22;border:1px solid #00c96a44;color:var(--green);border-radius:20px;padding:2px 10px;font-weight:700;font-size:12px;}
+
+/* FORM */
+.fg{margin-bottom:13px;}
+.fl{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:5px;display:block;}
+.fi{width:100%;background:var(--navy);border:1px solid var(--border);border-radius:10px;padding:11px 13px;color:var(--white);font-family:'Sarabun',sans-serif;font-size:14px;outline:none;transition:border-color .2s;}
+.fi:focus{border-color:var(--green);}
+.fs{width:100%;background:var(--navy);border:1px solid var(--border);border-radius:10px;padding:11px 13px;color:var(--white);font-family:'Sarabun',sans-serif;font-size:14px;outline:none;cursor:pointer;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+
+/* WARNINGS LIST */
+.wi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:7px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+.wi.active{border-left:3px solid var(--red);}
+.wi.redeemed{border-left:3px solid var(--green);opacity:.8;}
+.wi-name{font-size:13px;font-weight:700;}
+.wi-issue{font-size:12px;color:var(--ice);margin-top:2px;}
+.wi-impact{font-size:11px;color:var(--muted);margin-top:2px;}
+
+/* HEINRICH */
+.htri{display:flex;flex-direction:column;align-items:center;gap:2px;margin:10px 0;}
+.hrow{display:flex;align-items:center;justify-content:center;padding:8px 16px;border-radius:4px;}
+.hrow.maj{background:#ef444433;border:1px solid #ef444455;min-width:130px;}
+.hrow.min{background:#f59e0b22;border:1px solid #f59e0b44;min-width:210px;}
+.hrow.nea{background:#00c96a22;border:1px solid #00c96a44;min-width:290px;}
+
+/* ROLES */
+.rtag{font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;}
+.r-emp{background:#5a8aaa22;border:1px solid #5a8aaa55;color:var(--muted);}
+.r-so{background:#f59e0b22;border:1px solid #f59e0b55;color:var(--amber);}
+.r-mgr{background:#ef444422;border:1px solid #ef444455;color:var(--red);}
+
+/* BONUS BUTTON */
+.btn-bonus{width:100%;background:transparent;border:1.5px solid #ffd70066;border-radius:8px;padding:8px;color:var(--gold);font-family:'Sarabun',sans-serif;font-size:12px;font-weight:700;cursor:pointer;margin-top:5px;}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--dark);border:1px solid var(--green);border-radius:12px;padding:12px 20px;font-size:13px;color:var(--green);font-weight:600;opacity:0;transition:all .3s;z-index:500;white-space:nowrap;pointer-events:none;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.red{border-color:var(--red);color:var(--red);}
+.toast.amber{border-color:var(--amber);color:var(--amber);}
+
+/* MODAL */
+.modal-ov{position:fixed;inset:0;background:#000000aa;display:flex;align-items:flex-end;justify-content:center;z-index:300;opacity:0;pointer-events:none;transition:opacity .25s;}
+.modal-ov.show{opacity:1;pointer-events:all;}
+.modal-sh{background:var(--dark);border:1px solid var(--border);border-radius:24px 24px 0 0;padding:24px 22px 36px;width:100%;max-width:520px;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);}
+.modal-ov.show .modal-sh{transform:translateY(0);}
+.mhandle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 18px;}
+.mtitle{font-size:16px;font-weight:700;margin-bottom:4px;}
+.msub{font-size:12px;color:var(--muted);margin-bottom:16px;}
+
+@media(max-width:700px){.sidebar{display:none;}.stats-row{grid-template-columns:repeat(2,1fr);}.form-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-icon">🎙</div>
+    <div>
+      <div class="logo-name">SafeVoice Admin</div>
+      <div class="logo-sub">SAFETY OFFICER PANEL</div>
+    </div>
+  </div>
+  <div class="tb-right">
+    <span class="tb-user" id="tb-user">จป.สมหมาย</span>
+    <button class="tb-btn" onclick="goBack()">← หน้าหลัก</button>
+    <button class="tb-btn red" onclick="doLogout()">ออกจากระบบ</button>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sb-section">OVERVIEW</div>
+    <button class="tab-btn active" id="t-dash"    onclick="go('dash')">  <span class="tab-icon">📊</span>Dashboard</button>
+    <button class="tab-btn"        id="t-verify"  onclick="go('verify')"><span class="tab-icon">✅</span>ยืนยันรายงาน<span class="badge" id="bdg-p" style="display:none">0</span></button>
+
+    <div class="sb-section">พนักงาน</div>
+    <button class="tab-btn" id="t-credits"  onclick="go('credits')"> <span class="tab-icon">⭐</span>Credits พนักงาน</button>
+    <button class="tab-btn" id="t-warnings" onclick="go('warnings')"><span class="tab-icon">⚠</span>เพิ่มใบเตือน</button>
+
+    <div class="sb-section">ระบบ</div>
+    <button class="tab-btn" id="t-users" onclick="go('users')"><span class="tab-icon">🔐</span>จัดการสิทธิ์</button>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div class="tab-panel active" id="p-dash">
+      <div class="panel-title">Dashboard</div>
+      <div class="panel-sub">ภาพรวมความปลอดภัย กฟจ.ปัตตานี</div>
+      <div class="stats-row" id="db-stats"></div>
+      <div class="card">
+        <div class="section-label">📊 Heinrich's Triangle</div>
+        <div class="htri">
+          <div class="hrow maj"><span style="flex:1;text-align:center;font-size:12px;font-weight:700;color:var(--red)">Major Accident</span><span style="font-size:20px;font-weight:900;color:var(--red)" id="h-maj">0</span></div>
+          <div class="hrow min"><span style="flex:1;text-align:center;font-size:12px;font-weight:700;color:var(--amber)">Minor Incident</span><span style="font-size:20px;font-weight:900;color:var(--amber)" id="h-min">0</span></div>
+          <div class="hrow nea"><span style="flex:1;text-align:center;font-size:12px;font-weight:700;color:var(--green)">Near Miss Reports</span><span style="font-size:20px;font-weight:900;color:var(--green)" id="h-nea">0</span></div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;">ทุก 300 Near Miss ที่ถูกแก้ไข = ป้องกันอุบัติเหตุใหญ่ 1 ครั้ง</div>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div class="section-label" style="margin:0">⏳ High Risk รอตรวจสอบด่วน</div>
+          <button class="btn-sm" onclick="go('verify')">ดูทั้งหมด →</button>
+        </div>
+        <div id="db-quick"></div>
+      </div>
+    </div>
+
+    <!-- VERIFY -->
+    <div class="tab-panel" id="p-verify">
+      <div class="panel-title">ยืนยันรายงาน Near Miss</div>
+      <div class="panel-sub">ตรวจสอบและให้ Safety Credits แก่พนักงาน</div>
+      <div class="ftabs">
+        <button class="ftab active" onclick="vf('pending',this)">⏳ รอตรวจสอบ</button>
+        <button class="ftab" onclick="vf('all',this)">ทั้งหมด</button>
+        <button class="ftab" onclick="vf('high',this)">⚡ High</button>
+        <button class="ftab" onclick="vf('verified',this)">✓ ยืนยัน</button>
+        <button class="ftab" onclick="vf('rejected',this)">✗ ปฏิเสธ</button>
+      </div>
+      <input class="search" id="v-q" placeholder="ค้นหาชื่อพนักงาน หรือเนื้อหา..." oninput="renderVerify()">
+      <div id="v-list"></div>
+    </div>
+
+    <!-- CREDITS -->
+    <div class="tab-panel" id="p-credits">
+      <div class="panel-title">Safety Credits พนักงาน</div>
+      <div class="panel-sub">คะแนนสะสม ใบเตือน และประวัติ</div>
+      <input class="search" id="c-q" placeholder="ค้นหาชื่อหรือรหัสพนักงาน..." oninput="renderCredits()">
+      <div class="card" style="padding:0;overflow:hidden;">
+        <table class="tbl">
+          <thead><tr><th>พนักงาน</th><th>Credits</th><th>รายงาน</th><th>ใบเตือน (active)</th><th>Redeems</th></tr></thead>
+          <tbody id="c-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- WARNINGS -->
+    <div class="tab-panel" id="p-warnings">
+      <div class="panel-title">เพิ่มใบเตือนพนักงาน</div>
+      <div class="panel-sub">ใบเตือนจะแสดงในหน้า Credits ของพนักงานทันที</div>
+      <div class="card">
+        <div class="section-label">➕ ออกใบเตือนใหม่</div>
+        <div class="fg">
+          <label class="fl">พนักงาน</label>
+          <select class="fs" id="w-emp"><option value="">-- เลือกพนักงาน --</option></select>
+        </div>
+        <div class="fg">
+          <label class="fl">เรื่องใบเตือน</label>
+          <input class="fi" id="w-issue" placeholder="เช่น ไม่สวมหมวกนิรภัยระหว่างปฏิบัติงาน">
+        </div>
+        <div class="fg">
+          <label class="fl">ครั้งที่</label>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <input class="fi" id="w-cnt" type="number" min="1" max="10" value="1" style="width:90px;text-align:center;font-size:20px;font-weight:700;">
+            <span style="font-size:12px;color:var(--muted);">ใบเตือนครั้งที่นี้ของพนักงาน</span>
+          </div>
+        </div>
+        <button class="btn-amber" onclick="submitWarning()">⚠ ออกใบเตือน</button>
+      </div>
+      <div class="section-label">ประวัติใบเตือนทั้งหมด</div>
+      <div id="w-hist"></div>
+    </div>
+
+    <!-- USERS -->
+    <div class="tab-panel" id="p-users">
+      <div class="panel-title">จัดการสิทธิ์และบัญชี</div>
+      <div class="panel-sub">เพิ่มพนักงาน · ปรับ role · รีเซ็ตรหัสผ่าน</div>
+      <div class="card">
+        <div class="section-label">➕ เพิ่มพนักงานใหม่</div>
+        <div class="form-grid">
+          <div class="fg" style="margin:0"><label class="fl">รหัสพนักงาน</label><input class="fi" id="u-code" placeholder="เช่น EMP-5566"></div>
+          <div class="fg" style="margin:0"><label class="fl">ชื่อ-นามสกุล</label><input class="fi" id="u-name" placeholder="นายสมชาย มั่นคง"></div>
+          <div class="fg" style="margin:0"><label class="fl">แผนก</label><input class="fi" id="u-dept" placeholder="งานบำรุงรักษา..."></div>
+          <div class="fg" style="margin:0"><label class="fl">สิทธิ์</label>
+            <select class="fs" id="u-role">
+              <option value="employee">พนักงาน</option>
+              <option value="safety_officer">จป. / Safety Officer</option>
+              <option value="manager">ผู้จัดการ</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-prim" onclick="addUser()">➕ เพิ่มพนักงาน</button>
+      </div>
+      <div class="section-label">รายชื่อพนักงานในระบบ</div>
+      <div class="card" style="padding:0;overflow:hidden;">
+        <table class="tbl">
+          <thead><tr><th>รหัส</th><th>ชื่อ</th><th>แผนก</th><th>สิทธิ์</th><th>จัดการ</th></tr></thead>
+          <tbody id="u-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- RESET MODAL -->
+<div class="modal-ov" id="m-reset" onclick="if(event.target===this)closeModal()">
+  <div class="modal-sh">
+    <div class="mhandle"></div>
+    <div class="mtitle">🔑 รีเซ็ตรหัสผ่าน</div>
+    <div class="msub" id="m-reset-sub">—</div>
+    <div class="fg"><label class="fl">รหัสผ่านใหม่</label><input class="fi" id="m-pw" type="text" value="1234"></div>
+    <div style="display:flex;gap:10px;margin-top:4px;">
+      <button onclick="confirmReset()" style="flex:2;background:linear-gradient(135deg,var(--green),var(--greendk));border:none;border-radius:12px;padding:13px;color:#001a08;font-family:'Sarabun',sans-serif;font-size:15px;font-weight:700;cursor:pointer;">✅ ยืนยัน</button>
+      <button onclick="closeModal()" style="flex:1;background:transparent;border:1.5px solid var(--border);border-radius:12px;padding:13px;color:var(--muted);font-family:'Sarabun',sans-serif;font-size:14px;cursor:pointer;">ยกเลิก</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══ DATA ══
+const DB = {
+  reports:[
+    {id:'NM-025',date:'2568-07-14',emp_id:'EMP-2847',emp_name:'นายสมชาย มั่นคง',text:'พบแอ่งน้ำขังบริเวณแผงควบคุมไฟฟ้า รั้วกั้นพื้นที่ชำรุด ความเสี่ยงไฟฟ้าลัดวงจร',risk:'High',category:'สภาพแวดล้อมอันตราย',credits:100,status:'pending',is_anon:false,photos:2},
+    {id:'NM-024',date:'2568-07-11',emp_id:null,emp_name:'นิรนาม',text:'เครื่องมือวัดแรงดันไฟฟ้า (Multimeter) แสดงค่าผิดพลาด ตัวเลขกระโดด',risk:'High',category:'อุปกรณ์ชำรุด',credits:0,status:'pending',is_anon:true,photos:1},
+    {id:'NM-023',date:'2568-07-09',emp_id:'EMP-3012',emp_name:'นายวิชัย รักงาน',text:'ป้ายเตือน "อันตรายแรงสูง" ที่เสาโซน C ซีดจางมากจนอ่านไม่ออก',risk:'Medium',category:'สภาพแวดล้อมอันตราย',credits:50,status:'pending',is_anon:false,photos:1},
+    {id:'NM-022',date:'2568-07-05',emp_id:'EMP-2847',emp_name:'นายสมชาย มั่นคง',text:'Safety Harness มีร่องรอยการสึกหรอที่จุดเชื่อมต่อหลัก',risk:'High',category:'อุปกรณ์ชำรุด',credits:100,status:'verified',verified_by:'จป.สมหมาย',verified_date:'2568-07-06',is_anon:false,photos:3},
+    {id:'NM-021',date:'2568-07-02',emp_id:'EMP-4455',emp_name:'นายประสิทธิ์ ทำดี',text:'ไฟส่องสว่างบริเวณหน้างานขัดข้องกะทันหัน ต้องทำงานในที่มืดชั่วคราว',risk:'Low',category:'สภาพแวดล้อมอันตราย',credits:20,status:'rejected',verified_by:'จป.สมหมาย',verified_date:'2568-07-03',reject_reason:'รายงานไม่ครบถ้วน ไม่ระบุสถานที่และเวลา',is_anon:false,photos:0},
+    {id:'NM-018',date:'2568-06-01',emp_id:'EMP-2847',emp_name:'นายสมชาย มั่นคง',text:'พบสายไฟชำรุดที่เสาโซน B หมู่ 3 ไม่มีป้ายเตือน',risk:'High',category:'อุปกรณ์ชำรุด',credits:100,status:'verified',verified_by:'จป.สมหมาย',verified_date:'2568-06-02',is_anon:false,photos:2},
+  ],
+  employees:[
+    {id:'EMP-2847',name:'นายสมชาย มั่นคง',dept:'งานบำรุงรักษาระบบไฟฟ้า',role:'employee',credits:170,redeems:1},
+    {id:'EMP-3012',name:'นายวิชัย รักงาน',dept:'งานบำรุงรักษาระบบไฟฟ้า',role:'employee',credits:50,redeems:0},
+    {id:'EMP-4455',name:'นายประสิทธิ์ ทำดี',dept:'งานปฏิบัติการระบบไฟฟ้า',role:'employee',credits:20,redeems:0},
+    {id:'ADMIN-01',name:'นายสมหมาย ใจดี',dept:'งานอำนวยการ',role:'safety_officer',credits:0,redeems:0},
+  ],
+  warnings:[
+    {id:'W-001',emp_id:'EMP-2847',emp_name:'นายสมชาย มั่นคง',date:'2568-05-12',issue:'ลืมใส่สายรัดคางหมวกนิรภัย',impact:'ใบเตือนครั้งที่ 1',status:'active'},
+    {id:'W-004',emp_id:'EMP-2847',emp_name:'นายสมชาย มั่นคง',date:'2567-11-03',issue:'แต่งกายผิดระเบียบ',impact:'ใบเตือนครั้งที่ 1',status:'redeemed',redeemed_date:'2568-01-15'},
+  ]
+};
+const APP={vf:'pending',pendingReset:null};
+
+// ══ INIT ══
+document.addEventListener('DOMContentLoaded',()=>{
+  renderDash(); renderVerify(); renderCredits(); renderWarnHist(); renderUsers(); fillEmpDD(); updateBadge();
+});
+
+// ══ NAV ══
+function go(tab){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(`p-${tab}`).classList.add('active');
+  document.getElementById(`t-${tab}`).classList.add('active');
+}
+function updateBadge(){
+  const n=DB.reports.filter(r=>r.status==='pending').length;
+  const el=document.getElementById('bdg-p');
+  el.textContent=n; el.style.display=n>0?'':'none';
+}
+
+// ══ DASHBOARD ══
+function renderDash(){
+  const pend=DB.reports.filter(r=>r.status==='pending').length;
+  const high=DB.reports.filter(r=>r.risk==='High'&&r.status==='pending').length;
+  const ver=DB.reports.filter(r=>r.status==='verified').length;
+  const rej=DB.reports.filter(r=>r.status==='rejected').length;
+  document.getElementById('db-stats').innerHTML=`
+    <div class="stat-card"><div class="stat-num" style="color:var(--amber)">${pend}</div><div class="stat-lbl">รอตรวจสอบ</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--red)">${high}</div><div class="stat-lbl">High Risk รอ</div><div class="stat-sub" style="color:var(--red)">เร่งด่วน</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--green)">${ver}</div><div class="stat-lbl">ยืนยันแล้ว</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--muted)">${rej}</div><div class="stat-lbl">ปฏิเสธ</div></div>`;
+  document.getElementById('h-nea').textContent=ver;
+  document.getElementById('h-min').textContent=ver>0?`~${Math.max(1,Math.floor(ver/10))}`:'0';
+  document.getElementById('h-maj').textContent='0';
+  const hp=DB.reports.filter(r=>r.risk==='High'&&r.status==='pending');
+  const qel=document.getElementById('db-quick');
+  qel.innerHTML=hp.length?hp.slice(0,3).map(r=>`
+    <div class="rc high" style="margin-bottom:8px;">
+      <div class="rc-hd"><span class="rc-id">${r.id} · ${fd(r.date)}</span><div class="rc-badges"><span class="rb rb-h">⚡ สูง</span><span class="rb-p">⏳ รอ</span></div></div>
+      <div class="rc-text">${r.text}</div>
+      <div class="rc-actions"><button class="btn-v" onclick="doVer('${r.id}');renderDash()">✅ ยืนยัน</button><button class="btn-d" onclick="go('verify')">ดูทั้งหมด</button></div>
+    </div>`).join('')
+    :'<div style="color:var(--green);text-align:center;padding:16px;font-size:13px;">✅ ไม่มี High Risk รอตรวจสอบ</div>';
+}
+
+// ══ VERIFY ══
+function vf(f,btn){APP.vf=f;document.querySelectorAll('.ftab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');renderVerify();}
+function renderVerify(){
+  const q=(document.getElementById('v-q')?.value||'').toLowerCase();
+  const rb={High:'<span class="rb rb-h">⚡ สูง</span>',Medium:'<span class="rb rb-m">⚠ กลาง</span>',Low:'<span class="rb rb-l">✓ ต่ำ</span>'};
+  const sb={pending:'<span class="rb-p">⏳ รอ</span>',verified:'<span class="rb-ok">✓ ยืนยัน</span>',rejected:'<span class="rb-no">✗ ปฏิเสธ</span>'};
+  let list=DB.reports.filter(r=>{
+    const mf=APP.vf==='all'?true:APP.vf==='high'?r.risk==='High':r.status===APP.vf;
+    const ms=!q||r.text.toLowerCase().includes(q)||(r.emp_name||'').toLowerCase().includes(q);
+    return mf&&ms;
+  }).sort((a,b)=>{
+    if(a.status==='pending'&&b.status!=='pending')return -1;
+    if(a.status!=='pending'&&b.status==='pending')return 1;
+    return b.id.localeCompare(a.id);
+  });
+  const el=document.getElementById('v-list');
+  if(!list.length){el.innerHTML='<div style="text-align:center;color:var(--muted);padding:40px;">📋 ไม่พบรายงาน</div>';return;}
+  el.innerHTML=list.map(r=>{
+    let actions='';
+    if(r.status==='pending'){
+      const bon=r.risk==='High'?50:r.risk==='Medium'?25:10;
+      actions=`<div class="rc-actions">
+        <button class="btn-v" onclick="doVer('${r.id}')">✅ ยืนยัน</button>
+        <button class="btn-r" onclick="showRej('${r.id}')">✗ ปฏิเสธ</button>
+        <button class="btn-d" onclick="toggleAI('${r.id}')">รายละเอียด</button>
+      </div>
+      <div class="reject-wrap" id="rw-${r.id}">
+        <textarea class="reject-ta" id="rt-${r.id}" placeholder="ระบุเหตุผลที่ปฏิเสธ..."></textarea>
+        <div class="rej-btns">
+          <button class="btn-cr" onclick="doRej('${r.id}')">ยืนยันปฏิเสธ</button>
+          <button class="btn-cx" onclick="document.getElementById('rw-${r.id}').classList.remove('show')">ยกเลิก</button>
+        </div>
+      </div>`;
+    }else if(r.status==='verified'||r.status==='resolved'){
+      const bon=r.risk==='High'?50:r.risk==='Medium'?25:10;
+      actions=`<div class="done-v">✅ ยืนยันโดย ${r.verified_by||'จป.'} · ${fd(r.verified_date)}</div>
+        ${r.status!=='resolved'&&!r.is_anon?`<button class="btn-bonus" onclick="doBonus('${r.id}',${bon})">🔧 แก้ไขแล้ว → Bonus +${bon} Credits</button>`:''}`;
+    }else{
+      actions=`<div class="done-r">✗ ปฏิเสธโดย ${r.verified_by||'จป.'} · ${fd(r.verified_date)}</div>
+        ${r.reject_reason?`<div class="reject-note">เหตุผล: ${r.reject_reason}</div>`:''}`;
+    }
+    return `<div class="rc ${r.risk.toLowerCase()}">
+      <div class="rc-hd"><span class="rc-id">${r.id} · ${fd(r.date)}</span><div class="rc-badges">${rb[r.risk]||''}${sb[r.status]||''}</div></div>
+      <div class="rc-text">${r.text}</div>
+      <div class="rc-meta">
+        ${r.is_anon?'<span>🔒 นิรนาม</span>':`<span style="color:var(--ice);font-weight:600;">👤 ${r.emp_name}</span>`}
+        <span>📁 ${r.category}</span>
+        ${r.photos>0?`<span>📷 ${r.photos}</span>`:''}
+        ${r.credits>0?`<span class="rc-cred">+${r.credits}</span>`:''}
+      </div>
+      <div id="ai-${r.id}" style="display:none;background:var(--navy);border-radius:8px;padding:10px;margin-bottom:9px;font-size:12px;color:var(--muted);">
+        เชื่อม Claude API เพื่อดู AI Analysis จริง
+      </div>
+      ${actions}
+    </div>`;
+  }).join('');
+}
+function toggleAI(id){const e=document.getElementById(`ai-${id}`);e.style.display=e.style.display==='none'?'block':'none';}
+function showRej(id){document.getElementById(`rw-${id}`)?.classList.add('show');}
+function doVer(id){
+  const r=DB.reports.find(x=>x.id===id);if(!r)return;
+  r.status='verified';r.verified_by='จป.สมหมาย';r.verified_date=new Date().toISOString().split('T')[0];
+  const e=DB.employees.find(x=>x.id===r.emp_id);if(e&&!r.is_anon)e.credits+=r.credits;
+  renderVerify();renderDash();renderCredits();updateBadge();
+  showToast(`✅ ยืนยัน ${id} — +${r.credits} Credits → ${r.emp_name}`);
+}
+function doRej(id){
+  const reason=document.getElementById(`rt-${id}`)?.value.trim();
+  if(!reason){showToast('กรุณาระบุเหตุผล','red');return;}
+  const r=DB.reports.find(x=>x.id===id);if(!r)return;
+  r.status='rejected';r.reject_reason=reason;r.verified_by='จป.สมหมาย';r.verified_date=new Date().toISOString().split('T')[0];
+  renderVerify();renderDash();updateBadge();showToast(`✗ ปฏิเสธ ${id}`,'red');
+}
+function doBonus(id,bon){
+  const r=DB.reports.find(x=>x.id===id);if(!r)return;
+  const e=DB.employees.find(x=>x.id===r.emp_id);if(e)e.credits+=bon;
+  r.status='resolved';renderVerify();renderCredits();
+  showToast(`🔧 Bonus +${bon} → ${r.emp_name}`);
+}
+
+// ══ CREDITS ══
+function renderCredits(){
+  const q=(document.getElementById('c-q')?.value||'').toLowerCase();
+  const emps=DB.employees.filter(e=>e.id!=='ADMIN-01'&&(!q||e.name.toLowerCase().includes(q)||e.id.toLowerCase().includes(q)));
+  document.getElementById('c-body').innerHTML=emps.map(e=>{
+    const rpts=DB.reports.filter(r=>r.emp_id===e.id).length;
+    const warns=DB.warnings.filter(w=>w.emp_id===e.id&&w.status==='active').length;
+    return `<tr>
+      <td><div style="font-weight:700">${e.name}</div><div style="font-size:10px;color:var(--muted);font-family:monospace">${e.id}</div></td>
+      <td><span class="cpill">${e.credits}</span></td>
+      <td style="color:var(--muted)">${rpts}</td>
+      <td>${warns?`<span style="color:var(--red);font-weight:700">${warns} ใบ</span>`:'<span style="color:var(--muted)">—</span>'}</td>
+      <td style="color:var(--muted)">${e.redeems}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ══ WARNINGS ══
+function fillEmpDD(){
+  const s=document.getElementById('w-emp');if(!s)return;
+  s.innerHTML='<option value="">-- เลือกพนักงาน --</option>'+DB.employees.filter(e=>e.role==='employee').map(e=>`<option value="${e.id}">${e.name} (${e.id})</option>`).join('');
+}
+function submitWarning(){
+  const empId=document.getElementById('w-emp').value;
+  const issue=document.getElementById('w-issue').value.trim();
+  const cnt=parseInt(document.getElementById('w-cnt').value)||1;
+  if(!empId){showToast('กรุณาเลือกพนักงาน','amber');return;}
+  if(!issue){showToast('กรุณาระบุเรื่องใบเตือน','amber');return;}
+  const emp=DB.employees.find(e=>e.id===empId);
+  const today=new Date().toISOString().split('T')[0];
+  const wid='W-'+today.replace(/-/g,'')+'-'+String(DB.warnings.length+1).padStart(4,'0');
+  DB.warnings.unshift({id:wid,emp_id:empId,emp_name:emp?.name||empId,date:today,issue,impact:`ใบเตือนครั้งที่ ${cnt}`,status:'active'});
+  document.getElementById('w-issue').value='';document.getElementById('w-cnt').value='1';
+  renderWarnHist();renderCredits();
+  showToast(`⚠ ออกใบเตือน ${wid} ให้ ${emp?.name} แล้ว`,'amber');
+}
+function renderWarnHist(){
+  const el=document.getElementById('w-hist');
+  if(!DB.warnings.length){el.innerHTML='<div style="color:var(--muted);text-align:center;padding:20px">ยังไม่มีประวัติใบเตือน</div>';return;}
+  el.innerHTML=DB.warnings.map(w=>`
+    <div class="wi ${w.status}">
+      <div>
+        <div class="wi-name">${w.emp_name} <span style="font-size:10px;color:var(--muted);font-family:monospace">${w.emp_id}</span></div>
+        <div class="wi-issue">${w.issue}</div>
+        <div class="wi-impact">${w.impact} · ${fd(w.date)}</div>
+      </div>
+      <span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:5px;white-space:nowrap;${w.status==='active'?'background:#ef444422;border:1px solid #ef444433;color:var(--red)':'background:#00c96a22;border:1px solid #00c96a33;color:var(--green)'}">
+        ${w.status==='active'?'ยังมีผล':'หักล้างแล้ว'}
+      </span>
+    </div>`).join('');
+}
+
+// ══ USERS ══
+function addUser(){
+  const code=document.getElementById('u-code').value.trim();
+  const name=document.getElementById('u-name').value.trim();
+  const dept=document.getElementById('u-dept').value.trim();
+  const role=document.getElementById('u-role').value;
+  if(!code||!name){showToast('กรุณากรอกรหัสและชื่อพนักงาน','amber');return;}
+  if(DB.employees.find(e=>e.id===code)){showToast('รหัสพนักงานซ้ำในระบบ','red');return;}
+  DB.employees.push({id:code,name,dept,role,credits:0,redeems:0});
+  document.getElementById('u-code').value='';document.getElementById('u-name').value='';document.getElementById('u-dept').value='';
+  renderUsers();fillEmpDD();renderCredits();showToast(`✅ เพิ่มพนักงาน ${name} แล้ว`);
+}
+function renderUsers(){
+  const rl={employee:'พนักงาน',safety_officer:'จป.',manager:'ผู้จัดการ'};
+  const rc={employee:'r-emp',safety_officer:'r-so',manager:'r-mgr'};
+  document.getElementById('u-body').innerHTML=DB.employees.map(e=>`
+    <tr>
+      <td style="font-family:monospace;font-size:12px;color:var(--muted)">${e.id}</td>
+      <td style="font-weight:700">${e.name}</td>
+      <td style="font-size:12px;color:var(--muted)">${e.dept||'—'}</td>
+      <td><span class="rtag ${rc[e.role]||'r-emp'}">${rl[e.role]||e.role}</span></td>
+      <td><div style="display:flex;gap:6px">
+        <button class="btn-sm" onclick="toggleRole('${e.id}')">เปลี่ยน role</button>
+        <button class="btn-sm red" onclick="openReset('${e.id}','${e.name}')">รีเซ็ตรหัส</button>
+      </div></td>
+    </tr>`).join('');
+}
+function toggleRole(id){
+  const e=DB.employees.find(x=>x.id===id);if(!e)return;
+  const rs=['employee','safety_officer','manager'];
+  e.role=rs[(rs.indexOf(e.role)+1)%rs.length];
+  renderUsers();showToast(`🔄 ${e.name} → ${e.role}`);
+}
+function openReset(id,name){
+  APP.pendingReset=id;
+  document.getElementById('m-reset-sub').textContent=`พนักงาน: ${name} (${id})`;
+  document.getElementById('m-pw').value='1234';
+  const m=document.getElementById('m-reset');
+  m.style.display='flex';setTimeout(()=>m.classList.add('show'),10);
+}
+function confirmReset(){
+  const pw=document.getElementById('m-pw').value.trim();
+  if(!pw){showToast('กรุณาตั้งรหัสผ่าน','amber');return;}
+  closeModal();showToast(`✅ รีเซ็ต ${APP.pendingReset} → "${pw}" แล้ว`);APP.pendingReset=null;
+}
+function closeModal(){
+  const m=document.getElementById('m-reset');m.classList.remove('show');setTimeout(()=>m.style.display='none',300);
+}
+
+// ══ LOGOUT ══
+function doLogout(){sessionStorage.clear();location.href='index.html';}
+function goBack(){location.href='index.html';}
+
+// ══ UTILS ══
+function fd(s){if(!s)return'';const d=new Date(s.replace(/-/g,'/'));return isNaN(d)?s:d.toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric'});}
+function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show${type?' '+type:''}`;setTimeout(()=>t.classList.remove('show'),3500);}
+</script>
+</body>
+</html>
