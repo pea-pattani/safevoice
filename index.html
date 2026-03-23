@@ -23,6 +23,7 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { scroll-behavior: auto; }
 
 body {
   font-family: 'Sarabun', sans-serif;
@@ -1249,9 +1250,15 @@ const APP = {
 // ═══════════════════════════════════════════════
 function navTo(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById(`page-${page}`).classList.add('active');
+  const el = document.getElementById(`page-${page}`);
+  el.classList.add('active');
   APP.currentPage = page;
-  window.scrollTo(0,0);
+  // scroll to top — ทำงานได้ทั้ง iOS และ Android
+  setTimeout(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, 0);
 
   if      (page === 'dashboard') initDashboard();
   else if (page === 'credits')   initCredits();
@@ -1383,6 +1390,11 @@ function navToLogin() {
   APP.currentPage = 'login';
   document.getElementById('loginId').value = '';
   document.getElementById('loginPw').value = '';
+  setTimeout(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, 0);
 }
 
 // ── Auto-restore session on load ──
