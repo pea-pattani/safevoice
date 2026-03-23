@@ -2009,31 +2009,6 @@ function rShowResult(r) {
 
 function rSubmit() {
   const credits = APP.rIsAnon ? 0 : APP.rAiResult.credits;
-  APP.credits += credits;
-
-  // Add to DB
-  const newReport = {
-    id: `NM-0${DB.reports.length+1}`,
-    date: new Date().toISOString().split('T')[0],
-    emp_id: APP.rIsAnon ? null : APP.loggedUser?.id,
-    emp_name: APP.rIsAnon ? 'นิรนาม' : APP.loggedUser?.name,
-    text: APP.rMode==='voice' ? APP.rTranscript : document.getElementById('r-text-input').value,
-    risk: APP.rAiResult.risk_level, category: APP.rAiResult.category, credits,
-    summary: APP.rAiResult.summary_th, action: APP.rAiResult.action,
-    status:'pending', photos:APP.rPhotos.length, is_anon: APP.rIsAnon
-  };
-  DB.reports.unshift(newReport);
-  DB.transactions.unshift({ date:newReport.date, desc:`รายงาน ${newReport.id}`, type:`${newReport.risk} Risk`, amount:+credits });
-
-  document.getElementById('r-ai-result').style.display = 'none';
-  document.getElementById('r-succ-cred').textContent  = APP.rIsAnon ? 'รายงานถูกบันทึก (นิรนาม — ไม่ได้รับ Credits)' : `คุณได้รับ +${credits} Safety Credits`;
-  document.getElementById('r-succ-total').textContent = APP.credits;
-  document.getElementById('r-success').classList.add('show');
-  document.getElementById('r-success').scrollIntoView({behavior:'smooth', block:'start'});
-}
-
-function rSubmit() {
-  const credits = APP.rIsAnon ? 0 : APP.rAiResult.credits;
   const input   = APP.rMode==='voice' ? APP.rTranscript : document.getElementById('r-text-input').value;
   const payload = {
     employee_id:   APP.rIsAnon ? null : APP.loggedUser?.id,
@@ -2185,10 +2160,7 @@ function cRenderTransactions() {
     </div>`).join('');
 
   document.getElementById('c-tx-list').innerHTML =
-    txHTML + (rejectedHTML ? `<div style="font-size:10px;color:var(--muted);padding:8px 0 4px;letter-spacing:1px;">รายงานที่ไม่ผ่าน (ไม่ได้ Credits)</div>${rejectedHTML}` : '');
-}</div><div class="tx-date">${fmtDate(tx.date)}</div><div class="tx-type">${tx.type}</div></div>
-      <div class="tx-amount ${tx.amount>0?'tx-plus':'tx-minus'}">${tx.amount>0?'+':''}${tx.amount}</div>
-    </div>`).join('');
+    txHTML + (rejectedHTML ? '<div style="font-size:10px;color:var(--muted);padding:8px 0 4px;letter-spacing:1px;">รายงานที่ไม่ผ่าน (ไม่ได้ Credits)</div>' + rejectedHTML : '');
 }
 
 function cOpenModal(wid) {
@@ -2339,18 +2311,19 @@ function aRenderReports() {
           <button class="btn-cx" onclick="aHideReject('${r.id}')">ยกเลิก</button>
         </div>
       </div>`;
-    } else if (r.status==='verified') {
-      const bonusAmt = r.risk==='High' ? 50 : r.risk==='Medium' ? 25 : 10;
+    } else if (r.status==='verified' || r.status==='resolved') {
+      const bonusAmt       = r.risk==='High' ? 50 : r.risk==='Medium' ? 25 : 10;
       const alreadyResolved = r.status === 'resolved';
-      actions = `<div class="done-tag done-v" style="margin-bottom:6px;">✅ ยืนยันโดย ${r.verified_by||'จป.'} · ${fmtDate(r.verified_date)}</div>
-        ${alreadyResolved
-          ? `<div class="done-resolved">🔧 แก้ไขแล้ว · Bonus +${bonusAmt} Credits มอบให้แล้ว</div>`
-          : (r.is_anon ? '' : `<button onclick="aMarkResolved('${r.id}',${bonusAmt})"
-              style="width:100%;background:transparent;border:1.5px solid #ffd70066;border-radius:8px;padding:8px;
-              color:var(--gold);font-family:'Sarabun',sans-serif;font-size:12px;font-weight:700;cursor:pointer;margin-top:4px;">
-              🔧 แก้ไขแล้ว → Bonus +${bonusAmt} Credits
-            </button>`)
-        }`;
+      let bonusBtn = '';
+      if (alreadyResolved) {
+        bonusBtn = '<div class="done-resolved">🔧 แก้ไขแล้ว · Bonus +' + bonusAmt + ' Credits มอบให้แล้ว</div>';
+      } else if (!r.is_anon) {
+        bonusBtn = '<button onclick="aMarkResolved(\'' + r.id + '\',' + bonusAmt + ')" ' +
+          'style="width:100%;background:transparent;border:1.5px solid #ffd70066;border-radius:8px;padding:8px;' +
+          'color:var(--gold);font-family:Sarabun,sans-serif;font-size:12px;font-weight:700;cursor:pointer;margin-top:4px;">' +
+          '🔧 แก้ไขแล้ว → Bonus +' + bonusAmt + ' Credits</button>';
+      }
+      actions = '<div class="done-tag done-v" style="margin-bottom:6px;">✅ ยืนยันโดย ' + (r.verified_by||'จป.') + ' · ' + fmtDate(r.verified_date) + '</div>' + bonusBtn;
     } else {
       actions = `<div class="done-tag done-r">✗ ปฏิเสธโดย ${r.verified_by||'จป.'} · ${fmtDate(r.verified_date)}</div>
         ${r.reject_reason ? `<div class="reject-reason-note">เหตุผล: ${r.reject_reason}</div>` : ''}`;
@@ -2779,8 +2752,6 @@ async function aMarkResolved(reportId, bonusCredits) {
   showToast(`🔧 แก้ไขแล้ว! Bonus +${bonusCredits} Credits → ${r.emp_name}`);
 }
 
-// Reset dup state เมื่อ reset form
-const _origRReset = rReset;
 // ═══════════════════════════════════════════════
 //  UTILS
 // ═══════════════════════════════════════════════
