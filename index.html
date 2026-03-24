@@ -1508,30 +1508,40 @@ async function loadMyReportsFromSB() {
 // ── โหลดใบเตือนของพนักงานจาก Supabase ──
 async function loadMyWarningsFromSB() {
   if (CFG.SUPABASE_URL === 'YOUR_SUPABASE_URL') return;
-  const uid     = APP.loggedUser?.id;
-  const empCode = APP.loggedUser?.emp_code;
-  if (!uid || uid === empCode) return; // demo mode
+  const uid     = APP.loggedUser?.id;       // UUID จาก Supabase
+  const empCode = APP.loggedUser?.emp_code; // รหัสพนักงาน เช่น 278629
+  // demo mode: uid จะเท่ากับ empCode เพราะ loginWithDemo ตั้ง id=empCode
+  if (!uid || uid === empCode) return;
 
   try {
-    const rows = await SB.select('warnings',
-      `employee_id=eq.${uid}&select=*&order=created_at.desc`,
-      CFG.SUPABASE_KEY
-    );
-    if (rows && rows.length >= 0) {
-      const mapped = rows.map(r => ({
-        id:            r.warning_code || r.id,
-        _uuid:         r.id,
-        emp_id:        empCode, // ใช้ emp_code เป็น key ใน UI
-        date:          r.created_at ? r.created_at.split('T')[0] : '',
-        issue:         r.issue,
-        impact:        r.impact || '—',
-        status:        r.status || 'active',
-        redeemed_date: r.redeemed_at ? r.redeemed_at.split('T')[0] : null,
-      }));
-      // แทนที่ demo warnings ของ user นี้
-      DB.warnings = DB.warnings.filter(w => w.emp_id !== empCode && w.emp_id !== uid);
-      DB.warnings = [...mapped, ...DB.warnings];
-    }
+    // query ทั้ง UUID และ emp_code เพื่อรับ warnings ไม่ว่าจะบันทึกด้วย key ไหน
+    const [byUUID, byCode] = await Promise.all([
+      SB.select('warnings', `employee_id=eq.${uid}&select=*&order=created_at.desc`, CFG.SUPABASE_KEY),
+      SB.select('warnings', `employee_id=eq.${empCode}&select=*&order=created_at.desc`, CFG.SUPABASE_KEY)
+        .catch(() => [])
+    ]);
+    // รวมผล กำจัด duplicate ด้วย id
+    const seen = new Set();
+    const allRows = [...(byUUID||[]), ...(byCode||[])].filter(r => {
+      if (seen.has(r.id)) return false;
+      seen.add(r.id); return true;
+    });
+
+    const mapped = allRows.map(r => ({
+      id:            r.warning_code || r.id,
+      _uuid:         r.id,
+      emp_id:        empCode, // ใช้ emp_code เป็น key ใน UI
+      date:          r.created_at ? r.created_at.split('T')[0] : '',
+      issue:         r.issue,
+      impact:        r.impact || '—',
+      status:        r.status || 'active',
+      redeemed_date: r.redeemed_at ? r.redeemed_at.split('T')[0] : null,
+    }));
+
+    // แทนที่ demo warnings ของ user นี้ด้วยข้อมูลจริง
+    DB.warnings = DB.warnings.filter(w => w.emp_id !== empCode && w.emp_id !== uid);
+    DB.warnings = [...mapped, ...DB.warnings];
+    console.log(`✅ โหลด ${mapped.length} ใบเตือนจาก Supabase`);
   } catch(e) { console.warn('loadMyWarnings error:', e.message); }
 }
 
@@ -2618,12 +2628,15 @@ async function cConfirmRedeem() {
 
   try {
     if (CFG.SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+      // ใช้ w._uuid (UUID จริง) สำหรับ RPC — ไม่ใช่ warning_code
+      const warningUUID = w._uuid && !w._uuid.startsWith('W-') ? w._uuid : null;
+      if (!warningUUID) throw new Error('ไม่พบ UUID ของใบเตือนนี้ในระบบ');
       const result = await SB.rpc('redeem_warning',
-        { p_employee_id: APP.loggedUser.id, p_warning_id: wid },
+        { p_employee_id: APP.loggedUser.id, p_warning_id: warningUUID },
         SESSION.token()
       );
-      if (!result.ok) throw new Error(result.error);
-      APP.credits = result.new_balance;
+      if (!result || result.ok === false) throw new Error(result?.error || 'Redeem ไม่สำเร็จ');
+      APP.credits = result.new_balance ?? (APP.credits - CFG.REDEEM_COST);
     } else {
       APP.credits -= CFG.REDEEM_COST; // mock
     }
