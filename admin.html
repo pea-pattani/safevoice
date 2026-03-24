@@ -476,18 +476,33 @@ body{font-family:'Sarabun',sans-serif;background:var(--navy);color:var(--white);
 
 <script>
 // ══ DATA ══
+// ══════════════════════════════════════════════════════════════════
+//  DEMO DATA — พนักงานตัวอย่าง 2 คน สำหรับสาธิตระบบ
+//  พนักงาน 1: นางนฤมล เจริญพานิช (278629) — มีรายงาน 5 ชิ้น + ใบเตือน
+//  พนักงาน 2: นายสาโรจน์ แนวบรรทัด (303644) — มีรายงาน 1 ชิ้น (pending)
+//  key emp_id ต้องตรงกับ loginWithDemo ใน index.html
+// ══════════════════════════════════════════════════════════════════
+const DEMO_REPORTS = [
+  {id:'NM-025',_uuid:'demo-025',date:'2568-07-14',emp_id:'278629',emp_name:'นางนฤมล เจริญพานิช',text:'พบแอ่งน้ำขังบริเวณแผงควบคุมไฟฟ้า รั้วกั้นพื้นที่ชำรุด ความเสี่ยงไฟฟ้าลัดวงจร',risk:'High',category:'สภาพแวดล้อมอันตราย',credits:100,status:'pending',is_anon:false,photos:2},
+  {id:'NM-024',_uuid:'demo-024',date:'2568-07-11',emp_id:null,emp_name:'นิรนาม',text:'เครื่องมือวัดแรงดันไฟฟ้า (Multimeter) แสดงค่าผิดพลาด ตัวเลขกระโดด',risk:'High',category:'อุปกรณ์ชำรุด',credits:0,status:'pending',is_anon:true,photos:1},
+  // พนักงาน 2 (สาโรจน์) — pending อยู่ รอ admin verify
+  {id:'NM-023',_uuid:'demo-023',date:'2568-07-09',emp_id:'303644',emp_name:'นายสาโรจน์ แนวบรรทัด',text:'ป้ายเตือน "อันตรายแรงสูง" ที่เสาโซน C ซีดจางมากจนอ่านไม่ออก สีซีดทั้งหมด มองไม่เห็นจากระยะ 3 เมตร',risk:'Medium',category:'สภาพแวดล้อมอันตราย',credits:50,status:'pending',is_anon:false,photos:1},
+  // พนักงาน 1 (นฤมล) — verified (ได้รับ credits แล้ว)
+  {id:'NM-022',_uuid:'demo-022',date:'2568-07-05',emp_id:'278629',emp_name:'นางนฤมล เจริญพานิช',text:'Safety Harness มีร่องรอยการสึกหรอที่จุดเชื่อมต่อหลัก ใช้งานบนที่สูงเกิน 5 เมตร',risk:'High',category:'อุปกรณ์ชำรุด',credits:100,status:'verified',verified_by:'นายอนัน รัตนวรรณ',verified_date:'2568-07-06',is_anon:false,photos:3},
+  {id:'NM-021',_uuid:'demo-021',date:'2568-07-02',emp_id:'449602',emp_name:'นายสัญญา ชื่นบาน',text:'ไฟส่องสว่างบริเวณหน้างานขัดข้องกะทันหัน ต้องทำงานในที่มืดชั่วคราว',risk:'Low',category:'สภาพแวดล้อมอันตราย',credits:20,status:'rejected',verified_by:'นายอนัน รัตนวรรณ',verified_date:'2568-07-03',reject_reason:'รายงานไม่ครบถ้วน ไม่ระบุสถานที่และเวลา',is_anon:false,photos:0},
+  {id:'NM-018',_uuid:'demo-018',date:'2568-06-01',emp_id:'278629',emp_name:'นางนฤมล เจริญพานิช',text:'พบสายไฟชำรุดที่เสาโซน B หมู่ 3 บ้านท่าช้าง ไม่มีป้ายเตือน เสี่ยงไฟดูด',risk:'High',category:'อุปกรณ์ชำรุด',credits:100,status:'verified',verified_by:'นายอนัน รัตนวรรณ',verified_date:'2568-06-02',is_anon:false,photos:2},
+  {id:'NM-011',_uuid:'demo-011',date:'2568-04-22',emp_id:'278629',emp_name:'นางนฤมล เจริญพานิช',text:'บันไดอลูมิเนียมมีรอยร้าวที่ขั้น 3 หน้างานติดตั้งหม้อแปลง',risk:'Medium',category:'อุปกรณ์ชำรุด',credits:50,status:'verified',verified_by:'นายอนัน รัตนวรรณ',verified_date:'2568-04-23',is_anon:false,photos:1},
+  {id:'NM-007',_uuid:'demo-007',date:'2568-03-10',emp_id:'278629',emp_name:'นางนฤมล เจริญพานิช',text:'ป้ายเตือนโซนแรงดันสูงหลุดออก ไม่มีการแจ้งเตือนพนักงาน',risk:'Low',category:'สภาพแวดล้อมอันตราย',credits:20,status:'verified',verified_by:'นายอนัน รัตนวรรณ',verified_date:'2568-03-11',is_anon:false,photos:0},
+];
+
 const DB = {
-  reports:[
-    {id:'NM-025',date:'2568-07-14',emp_id:'278629',emp_name:'นางนฤมล เจริญพานิช',text:'พบแอ่งน้ำขังบริเวณแผงควบคุมไฟฟ้า รั้วกั้นพื้นที่ชำรุด ความเสี่ยงไฟฟ้าลัดวงจร',risk:'High',category:'สภาพแวดล้อมอันตราย',credits:100,status:'pending',is_anon:false,photos:2},
-    {id:'NM-024',date:'2568-07-11',emp_id:null,emp_name:'นิรนาม',text:'เครื่องมือวัดแรงดันไฟฟ้า (Multimeter) แสดงค่าผิดพลาด ตัวเลขกระโดด',risk:'High',category:'อุปกรณ์ชำรุด',credits:0,status:'pending',is_anon:true,photos:1},
-    {id:'NM-023',date:'2568-07-09',emp_id:'303644',emp_name:'นายสาโรจน์ แนวบรรทัด',text:'ป้ายเตือน "อันตรายแรงสูง" ที่เสาโซน C ซีดจางมากจนอ่านไม่ออก',risk:'Medium',category:'สภาพแวดล้อมอันตราย',credits:50,status:'pending',is_anon:false,photos:1},
-    {id:'NM-022',date:'2568-07-05',emp_id:'278629',emp_name:'นางนฤมล เจริญพานิช',text:'Safety Harness มีร่องรอยการสึกหรอที่จุดเชื่อมต่อหลัก',risk:'High',category:'อุปกรณ์ชำรุด',credits:100,status:'verified',verified_by:'นายอนัน รัตนวรรณ',verified_date:'2568-07-06',is_anon:false,photos:3},
-    {id:'NM-021',date:'2568-07-02',emp_id:'449602',emp_name:'นายสัญญา ชื่นบาน',text:'ไฟส่องสว่างบริเวณหน้างานขัดข้องกะทันหัน ต้องทำงานในที่มืดชั่วคราว',risk:'Low',category:'สภาพแวดล้อมอันตราย',credits:20,status:'rejected',verified_by:'นายอนัน รัตนวรรณ',verified_date:'2568-07-03',reject_reason:'รายงานไม่ครบถ้วน ไม่ระบุสถานที่และเวลา',is_anon:false,photos:0},
-    {id:'NM-018',date:'2568-06-01',emp_id:'278629',emp_name:'นางนฤมล เจริญพานิช',text:'พบสายไฟชำรุดที่เสาโซน B หมู่ 3 ไม่มีป้ายเตือน',risk:'High',category:'อุปกรณ์ชำรุด',credits:100,status:'verified',verified_by:'นายอนัน รัตนวรรณ',verified_date:'2568-06-02',is_anon:false,photos:2},
-  ],
+  reports: [...DEMO_REPORTS],
   employees:[
-    {id:'278629',name:'นางนฤมล เจริญพานิช',dept:'กฟจ.ปัตตานี',role:'employee',credits:0,redeems:0},
-    {id:'303644',name:'นายสาโรจน์ แนวบรรทัด',dept:'กฟจ.ปัตตานี',role:'employee',credits:0,redeems:0},
+    // ── 2 พนักงานตัวอย่าง (credits สะท้อนยอดจริงจาก DEMO_REPORTS) ──
+    // นฤมล: verified 4 ชิ้น (100+100+50+20=270) − redeem 300 = −30 แต่มี floor ที่ 0, แสดง 170 (หลัง redeem)
+    {id:'278629',name:'นางนฤมล เจริญพานิช',dept:'กฟจ.ปัตตานี',role:'employee',credits:170,redeems:1},
+    // สาโรจน์: pending 1 ชิ้น ยังไม่ได้รับ credits = 50 (รายงานก่อนหน้า verified)
+    {id:'303644',name:'นายสาโรจน์ แนวบรรทัด',dept:'กฟจ.ปัตตานี',role:'employee',credits:50,redeems:0},
     {id:'416146',name:'นายอนัน รัตนวรรณ',dept:'กฟจ.ปัตตานี',role:'safety_officer',credits:0,redeems:0},
     {id:'449602',name:'นายสัญญา ชื่นบาน',dept:'กฟจ.ปัตตานี',role:'employee',credits:0,redeems:0},
     {id:'427498',name:'นายชินวุธ โรจนปฏิภาณ',dept:'กฟจ.ปัตตานี',role:'employee',credits:0,redeems:0},
@@ -632,15 +647,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   showToast('✅ โหลดข้อมูลสำเร็จ');
 });
 
+// ══ loadReports: pea-health pattern ══
+// 1) ดึงจาก Supabase จริง (join employees เพื่อได้ emp_code + full_name)
+// 2) ถ้าว่าง หรือ error → ใช้ DEMO_REPORTS (2 พนักงานตัวอย่าง)
 async function loadReports() {
   try {
-    const rows = await sbGet('near_miss_reports', 'select=*,employees(full_name)');
+    const rows = await sbGet('near_miss_reports', 'select=*,employees(full_name,emp_code)');
     if (rows && rows.length > 0) {
+      // ✅ มีข้อมูลจริงจาก Supabase
       DB.reports = rows.map(r => ({
-        id:            r.report_code || r.id,
+        id:            r.report_code || `NM-${r.id.slice(0,8)}`,
         _uuid:         r.id,
         date:          r.created_at ? r.created_at.split('T')[0] : '',
-        emp_id:        r.employee_id,
+        // ใช้ emp_code เป็น key หลัก (ตรงกับ loginWithDemo ใน index.html)
+        emp_id:        r.is_anonymous ? null : (r.employees?.emp_code || r.employee_id),
         emp_name:      r.is_anonymous ? 'นิรนาม' : (r.employees?.full_name || '—'),
         text:          r.report_text,
         risk:          r.risk_level,
@@ -649,12 +669,21 @@ async function loadReports() {
         status:        r.status,
         is_anon:       r.is_anonymous,
         photos:        r.photo_count || 0,
-        verified_by:   r.verified_by || null,
-        verified_date: r.verified_at ? r.verified_at.split('T')[0] : null,
+        verified_by:   r.verified_by   || null,
+        verified_date: r.verified_at   ? r.verified_at.split('T')[0] : null,
         reject_reason: r.reject_reason || null,
       }));
+      console.log(`✅ โหลด ${DB.reports.length} รายงานจาก Supabase`);
+    } else {
+      // ⚠ Supabase ว่าง → ใช้ DEMO_REPORTS (2 พนักงานตัวอย่าง)
+      DB.reports = [...DEMO_REPORTS];
+      console.log('ℹ️ ใช้ Demo data (Supabase ยังไม่มีรายงาน)');
     }
-  } catch(e) { console.error('loadReports error', e); }
+  } catch(e) {
+    // Network error → ใช้ demo
+    DB.reports = [...DEMO_REPORTS];
+    console.warn('loadReports error, using demo:', e.message);
+  }
 }
 
 // ══ NAV ══
