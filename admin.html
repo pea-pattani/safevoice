@@ -600,10 +600,62 @@ const DB = {
 };
 const APP={vf:'pending',pendingReset:null};
 
+// ══ SUPABASE CONFIG ══
+const SB_URL = 'https://kgcnuelqgawslfcfzdcd.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtnY251ZWxxZ2F3c2xmY2Z6ZGNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNDg1NzgsImV4cCI6MjA4OTgyNDU3OH0.xlVn5RYNgfHf87tUYyMyMJWIGvLCD085y1g3EMEAf-Q';
+
+const sbHeaders = {
+  'Content-Type': 'application/json',
+  'apikey': SB_KEY,
+  'Authorization': `Bearer ${SB_KEY}`
+};
+
+async function sbGet(table, query='') {
+  const res = await fetch(`${SB_URL}/rest/v1/${table}?${query}&order=created_at.desc`, { headers: sbHeaders });
+  return res.ok ? res.json() : [];
+}
+
+async function sbPatch(table, uuid, data) {
+  const res = await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${uuid}`, {
+    method: 'PATCH',
+    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
+    body: JSON.stringify(data)
+  });
+  return res.ok;
+}
+
 // ══ INIT ══
-document.addEventListener('DOMContentLoaded',()=>{
+document.addEventListener('DOMContentLoaded', async () => {
+  showToast('⌛ กำลังโหลดข้อมูล...', 'amber');
+  await loadReports();
   renderDash(); renderVerify(); renderCredits(); renderWarnHist(); renderUsers(); fillEmpDD(); updateBadge(); anRenderAll();
+  showToast('✅ โหลดข้อมูลสำเร็จ');
 });
+
+async function loadReports() {
+  try {
+    const rows = await sbGet('near_miss_reports', 'select=*,employees(full_name)');
+    if (rows && rows.length > 0) {
+      DB.reports = rows.map(r => ({
+        id:            r.report_code || r.id,
+        _uuid:         r.id,
+        date:          r.created_at ? r.created_at.split('T')[0] : '',
+        emp_id:        r.employee_id,
+        emp_name:      r.is_anonymous ? 'นิรนาม' : (r.employees?.full_name || '—'),
+        text:          r.report_text,
+        risk:          r.risk_level,
+        category:      r.category,
+        credits:       r.credits_given || 0,
+        status:        r.status,
+        is_anon:       r.is_anonymous,
+        photos:        r.photo_count || 0,
+        verified_by:   r.verified_by || null,
+        verified_date: r.verified_at ? r.verified_at.split('T')[0] : null,
+        reject_reason: r.reject_reason || null,
+      }));
+    }
+  } catch(e) { console.error('loadReports error', e); }
+}
 
 // ══ NAV ══
 function go(tab){
@@ -713,24 +765,41 @@ function renderVerify(){
 }
 function toggleAI(id){const e=document.getElementById(`ai-${id}`);e.style.display=e.style.display==='none'?'block':'none';}
 function showRej(id){document.getElementById(`rw-${id}`)?.classList.add('show');}
-function doVer(id){
+async function doVer(id){
   const r=DB.reports.find(x=>x.id===id);if(!r)return;
-  r.status='verified';r.verified_by='จป.สมหมาย';r.verified_date=new Date().toISOString().split('T')[0];
-  const e=DB.employees.find(x=>x.id===r.emp_id);if(e&&!r.is_anon)e.credits+=r.credits;
+  const today=new Date().toISOString().split('T')[0];
+  // เรียก RPC — จัดการ credits อัตโนมัติ
+  const res = await fetch(`${SB_URL}/rest/v1/rpc/verify_report`, {
+    method:'POST', headers:{...sbHeaders},
+    body: JSON.stringify({ p_report_id: r._uuid, p_officer_id: null })
+  });
+  const data = await res.json();
+  if(data.ok === false){ showToast('❌ '+data.error,'red'); return; }
+  r.status='verified'; r.verified_date=today;
+  const e=DB.employees.find(x=>x.id===r.emp_id);
+  if(e&&!r.is_anon) e.credits += r.credits;
   renderVerify();renderDash();renderCredits();updateBadge();
-  showToast(`✅ ยืนยัน ${id} — +${r.credits} Credits → ${r.emp_name}`);
+  showToast(`✅ ยืนยัน ${id} — +${r.credits} Credits`);
 }
-function doRej(id){
+async function doRej(id){
   const reason=document.getElementById(`rt-${id}`)?.value.trim();
   if(!reason){showToast('กรุณาระบุเหตุผล','red');return;}
   const r=DB.reports.find(x=>x.id===id);if(!r)return;
-  r.status='rejected';r.reject_reason=reason;r.verified_by='จป.สมหมาย';r.verified_date=new Date().toISOString().split('T')[0];
-  renderVerify();renderDash();updateBadge();showToast(`✗ ปฏิเสธ ${id}`,'red');
+  const res = await fetch(`${SB_URL}/rest/v1/rpc/reject_report`, {
+    method:'POST', headers:{...sbHeaders},
+    body: JSON.stringify({ p_report_id: r._uuid, p_officer_id: null, p_reason: reason })
+  });
+  const data = await res.json();
+  if(data.ok === false){ showToast('❌ '+data.error,'red'); return; }
+  r.status='rejected'; r.reject_reason=reason;
+  renderVerify();renderDash();updateBadge();
+  showToast(`✗ ปฏิเสธ ${id}`,'red');
 }
-function doBonus(id,bon){
+async function doBonus(id,bon){
   const r=DB.reports.find(x=>x.id===id);if(!r)return;
   const e=DB.employees.find(x=>x.id===r.emp_id);if(e)e.credits+=bon;
   r.status='resolved';renderVerify();renderCredits();
+  await sbPatch('near_miss_reports', r._uuid, {status:'resolved'});
   showToast(`🔧 Bonus +${bon} → ${r.emp_name}`);
 }
 
