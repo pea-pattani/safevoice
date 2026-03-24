@@ -795,33 +795,59 @@ function renderVerify(){
 function toggleAI(id){const e=document.getElementById(`ai-${id}`);e.style.display=e.style.display==='none'?'block':'none';}
 function showRej(id){document.getElementById(`rw-${id}`)?.classList.add('show');}
 async function doVer(id){
-  const r=DB.reports.find(x=>x.id===id);if(!r)return;
-  const today=new Date().toISOString().split('T')[0];
-  // เรียก RPC — จัดการ credits อัตโนมัติ
-  const res = await fetch(`${SB_URL}/rest/v1/rpc/verify_report`, {
-    method:'POST', headers:{...sbHeaders},
-    body: JSON.stringify({ p_report_id: r._uuid, p_officer_id: null })
+  const r=DB.reports.find(x=>x.id===id); if(!r) return;
+  const today = new Date().toISOString();
+
+  // ถ้าเป็น demo data (_uuid ขึ้นต้นด้วย 'demo-') → อัปเดตแค่ local state
+  if(!r._uuid || r._uuid.startsWith('demo-')){
+    r.status='verified'; r.verified_date=today.split('T')[0]; r.verified_by='จป.';
+    const e=DB.employees.find(x=>x.id===r.emp_id);
+    if(e&&!r.is_anon) e.credits += r.credits;
+    renderVerify(); renderDash(); renderCredits(); updateBadge();
+    showToast(`✅ ยืนยัน ${id} (demo) — +${r.credits} Credits`);
+    return;
+  }
+
+  // Supabase จริง — patch โดยตรง ไม่ต้องพึ่ง RPC
+  const ok = await sbPatch('near_miss_reports', r._uuid, {
+    status:      'verified',
+    verified_at: today,
+    // verified_by เป็น uuid — ส่ง null ไปก่อน (ยังไม่มี officer login system)
+    verified_by: null
   });
-  const data = await res.json();
-  if(data.ok === false){ showToast('❌ '+data.error,'red'); return; }
-  r.status='verified'; r.verified_date=today;
+  if(!ok){ showToast('❌ บันทึกไม่สำเร็จ — ตรวจ console','red'); return; }
+
+  r.status='verified'; r.verified_date=today.split('T')[0]; r.verified_by='จป.';
   const e=DB.employees.find(x=>x.id===r.emp_id);
   if(e&&!r.is_anon) e.credits += r.credits;
-  renderVerify();renderDash();renderCredits();updateBadge();
+  renderVerify(); renderDash(); renderCredits(); updateBadge();
   showToast(`✅ ยืนยัน ${id} — +${r.credits} Credits`);
 }
+
 async function doRej(id){
   const reason=document.getElementById(`rt-${id}`)?.value.trim();
-  if(!reason){showToast('กรุณาระบุเหตุผล','red');return;}
-  const r=DB.reports.find(x=>x.id===id);if(!r)return;
-  const res = await fetch(`${SB_URL}/rest/v1/rpc/reject_report`, {
-    method:'POST', headers:{...sbHeaders},
-    body: JSON.stringify({ p_report_id: r._uuid, p_officer_id: null, p_reason: reason })
+  if(!reason){ showToast('กรุณาระบุเหตุผล','red'); return; }
+  const r=DB.reports.find(x=>x.id===id); if(!r) return;
+
+  // ถ้าเป็น demo data → อัปเดตแค่ local state
+  if(!r._uuid || r._uuid.startsWith('demo-')){
+    r.status='rejected'; r.reject_reason=reason;
+    renderVerify(); renderDash(); updateBadge();
+    showToast(`✗ ปฏิเสธ ${id} (demo)`,'red');
+    return;
+  }
+
+  // Supabase จริง — patch โดยตรง
+  const ok = await sbPatch('near_miss_reports', r._uuid, {
+    status:        'rejected',
+    reject_reason: reason,
+    verified_at:   new Date().toISOString(),
+    verified_by:   null
   });
-  const data = await res.json();
-  if(data.ok === false){ showToast('❌ '+data.error,'red'); return; }
+  if(!ok){ showToast('❌ บันทึกไม่สำเร็จ','red'); return; }
+
   r.status='rejected'; r.reject_reason=reason;
-  renderVerify();renderDash();updateBadge();
+  renderVerify(); renderDash(); updateBadge();
   showToast(`✗ ปฏิเสธ ${id}`,'red');
 }
 async function doBonus(id,bon){
