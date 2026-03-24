@@ -164,7 +164,28 @@ body{font-family:'Sarabun',sans-serif;background:var(--navy);color:var(--white);
 .mtitle{font-size:16px;font-weight:700;margin-bottom:4px;}
 .msub{font-size:12px;color:var(--muted);margin-bottom:16px;}
 
-@media(max-width:700px){.sidebar{display:none;}.stats-row{grid-template-columns:repeat(2,1fr);}.form-grid{grid-template-columns:1fr;}}
+/* BOTTOM NAV (mobile only) */
+.bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--dark);border-top:1px solid var(--border);z-index:200;padding:6px 0 10px;}
+.bottom-nav-inner{display:flex;justify-content:space-around;}
+.bn-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:none;cursor:pointer;color:#3A5570;font-family:'Sarabun',sans-serif;font-size:9px;letter-spacing:.3px;padding:4px 0;transition:color .2s;}
+.bn-btn.active{color:var(--green);}
+.bn-btn svg{width:20px;height:20px;}
+
+/* MORE DRAWER */
+.more-ov{position:fixed;inset:0;background:#000000aa;z-index:300;opacity:0;pointer-events:none;transition:opacity .25s;}
+.more-ov.show{opacity:1;pointer-events:all;}
+.more-sh{position:absolute;bottom:0;left:0;right:0;background:var(--dark);border:1px solid var(--border);border-radius:24px 24px 0 0;padding:16px 20px 32px;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);}
+.more-ov.show .more-sh{transform:translateY(0);}
+.more-item{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;color:var(--white);font-family:'Sarabun',sans-serif;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:8px;}
+
+@media(max-width:700px){
+  .sidebar{display:none;}
+  .stats-row{grid-template-columns:repeat(2,1fr);}
+  .form-grid{grid-template-columns:1fr;}
+  .bottom-nav{display:block;}
+  .content{padding:16px 14px 80px;}
+  .btn-v,.btn-r{padding:13px;font-size:14px;}
+}
 
 /* ══ ANALYTICS ══ */
 .an-grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
@@ -204,8 +225,6 @@ body{font-family:'Sarabun',sans-serif;background:var(--navy);color:var(--white);
     </div>
   </div>
   <div class="tb-right">
-    <span class="tb-user" id="tb-user">จป.สมหมาย</span>
-    <button class="tb-btn" onclick="goBack()">← หน้าหลัก</button>
     <button class="tb-btn red" onclick="doLogout()">ออกจากระบบ</button>
   </div>
 </div>
@@ -225,7 +244,6 @@ body{font-family:'Sarabun',sans-serif;background:var(--navy);color:var(--white);
 
     <div class="sb-section">ระบบ</div>
     <button class="tab-btn" id="t-users" onclick="go('users')"><span class="tab-icon">🔐</span>จัดการสิทธิ์</button>
-    <button class="tab-btn" id="t-analytics" onclick="go('analytics')"><span class="tab-icon">📊</span>Analytics</button>
   </div>
 
   <!-- CONTENT -->
@@ -251,6 +269,74 @@ body{font-family:'Sarabun',sans-serif;background:var(--navy);color:var(--white);
           <button class="btn-sm" onclick="go('verify')">ดูทั้งหมด →</button>
         </div>
         <div id="db-quick"></div>
+      </div>
+
+      <!-- ANALYTICS (รวมใน Dashboard) -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;margin-top:8px;">
+        <div style="font-size:12px;font-weight:700;color:var(--amber);letter-spacing:1px;">📊 Analytics</div>
+        <div class="an-period" style="margin:0;">
+          <button class="an-ptab active" onclick="anSetPeriod(3,this)">3 เดือน</button>
+          <button class="an-ptab" onclick="anSetPeriod(6,this)">6 เดือน</button>
+          <button class="an-ptab" onclick="anSetPeriod(12,this)">ปีนี้</button>
+        </div>
+      </div>
+
+      <div class="an-grid2">
+        <div class="an-card">
+          <div class="an-title">📈 Near Miss ต่อเดือน</div>
+          <div class="trend-wrap">
+            <svg class="trend-svg" id="an-trend-svg" viewBox="0 0 360 130" preserveAspectRatio="none"></svg>
+            <div class="trend-labels" id="an-trend-labels"></div>
+          </div>
+        </div>
+        <div class="an-card">
+          <div class="an-title">🏆 Top 3 ความเสี่ยงที่พบบ่อย</div>
+          <div id="an-top-risk"></div>
+        </div>
+      </div>
+
+      <div class="an-grid2">
+        <div class="an-card">
+          <div class="an-title">🗂 สัดส่วนตามประเภท</div>
+          <div class="donut-wrap">
+            <svg class="donut-svg" id="an-donut" viewBox="0 0 100 100"></svg>
+            <div id="an-donut-legend" style="flex:1;"></div>
+          </div>
+        </div>
+        <div class="an-card">
+          <div class="an-title">⏱ เวลาตอบสนอง จป. (ชม.)</div>
+          <div id="an-resp-list"></div>
+          <div style="display:flex;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
+            <div style="flex:1;background:var(--navy);border-radius:8px;padding:8px;text-align:center;">
+              <div style="font-size:18px;font-weight:900;color:var(--green);" id="an-avg-resp">—</div>
+              <div style="font-size:9px;color:var(--muted);">เฉลี่ย ชม.</div>
+            </div>
+            <div style="flex:1;background:var(--navy);border-radius:8px;padding:8px;text-align:center;">
+              <div style="font-size:18px;font-weight:900;color:var(--amber);" id="an-sla">—</div>
+              <div style="font-size:9px;color:var(--muted);">ผ่าน SLA 48ชม.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="an-card" style="margin-bottom:14px;">
+        <div class="an-title">🗺 Heatmap — ความถี่ Near Miss (วัน × ช่วงเวลา)</div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:10px;">ยิ่งสีเข้ม = พบบ่อย</div>
+        <div id="an-heatmap"></div>
+        <div style="display:flex;align-items:center;gap:5px;margin-top:10px;">
+          <span style="font-size:9px;color:var(--muted);">น้อย</span>
+          <div style="width:16px;height:10px;border-radius:2px;" class="hc0"></div>
+          <div style="width:16px;height:10px;border-radius:2px;" class="hc2"></div>
+          <div style="width:16px;height:10px;border-radius:2px;" class="hc4"></div>
+          <div style="width:16px;height:10px;border-radius:2px;" class="hc6"></div>
+          <div style="width:16px;height:10px;border-radius:2px;" class="hc8"></div>
+          <span style="font-size:9px;color:var(--muted);">มาก</span>
+        </div>
+      </div>
+
+      <div class="an-card" style="margin-bottom:14px;">
+        <div class="an-title">📍 จุดเสี่ยงสูง (Hotspot)</div>
+        <div id="an-hotspot"></div>
       </div>
     </div>
 
@@ -339,82 +425,37 @@ body{font-family:'Sarabun',sans-serif;background:var(--navy);color:var(--white);
     </div>
 
 
-    <!-- ANALYTICS -->
-    <div class="tab-panel" id="p-analytics">
-      <div class="panel-title">Analytics</div>
-      <div class="panel-sub">วิเคราะห์ข้อมูล Near Miss เชิงลึก</div>
-
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-        <div style="font-size:12px;font-weight:700;color:var(--amber);letter-spacing:1px;">📊 ช่วงเวลา</div>
-        <div class="an-period" style="margin:0;">
-          <button class="an-ptab active" onclick="anSetPeriod(3,this)">3 เดือน</button>
-          <button class="an-ptab" onclick="anSetPeriod(6,this)">6 เดือน</button>
-          <button class="an-ptab" onclick="anSetPeriod(12,this)">ปีนี้</button>
-        </div>
-      </div>
-
-      <div class="an-grid2">
-        <div class="an-card">
-          <div class="an-title">📈 Near Miss ต่อเดือน</div>
-          <div class="trend-wrap">
-            <svg class="trend-svg" id="an-trend-svg" viewBox="0 0 360 130" preserveAspectRatio="none"></svg>
-            <div class="trend-labels" id="an-trend-labels"></div>
-          </div>
-        </div>
-        <div class="an-card">
-          <div class="an-title">🏆 Top 3 ความเสี่ยงที่พบบ่อย</div>
-          <div id="an-top-risk"></div>
-        </div>
-      </div>
-
-      <div class="an-grid2">
-        <div class="an-card">
-          <div class="an-title">🗂 สัดส่วนตามประเภท</div>
-          <div class="donut-wrap">
-            <svg class="donut-svg" id="an-donut" viewBox="0 0 100 100"></svg>
-            <div id="an-donut-legend" style="flex:1;"></div>
-          </div>
-        </div>
-        <div class="an-card">
-          <div class="an-title">⏱ เวลาตอบสนอง จป. (ชม.)</div>
-          <div id="an-resp-list"></div>
-          <div style="display:flex;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
-            <div style="flex:1;background:var(--navy);border-radius:8px;padding:8px;text-align:center;">
-              <div style="font-size:18px;font-weight:900;color:var(--green);" id="an-avg-resp">—</div>
-              <div style="font-size:9px;color:var(--muted);">เฉลี่ย ชม.</div>
-            </div>
-            <div style="flex:1;background:var(--navy);border-radius:8px;padding:8px;text-align:center;">
-              <div style="font-size:18px;font-weight:900;color:var(--amber);" id="an-sla">—</div>
-              <div style="font-size:9px;color:var(--muted);">ผ่าน SLA 48ชม.</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="an-card" style="margin-bottom:14px;">
-        <div class="an-title">🗺 Heatmap — ความถี่ Near Miss (วัน × ช่วงเวลา)</div>
-        <div style="font-size:10px;color:var(--muted);margin-bottom:10px;">ยิ่งสีเข้ม = พบบ่อย</div>
-        <div id="an-heatmap"></div>
-        <div style="display:flex;align-items:center;gap:5px;margin-top:10px;">
-          <span style="font-size:9px;color:var(--muted);">น้อย</span>
-          <div style="width:16px;height:10px;border-radius:2px;" class="hc0"></div>
-          <div style="width:16px;height:10px;border-radius:2px;" class="hc2"></div>
-          <div style="width:16px;height:10px;border-radius:2px;" class="hc4"></div>
-          <div style="width:16px;height:10px;border-radius:2px;" class="hc6"></div>
-          <div style="width:16px;height:10px;border-radius:2px;" class="hc8"></div>
-          <span style="font-size:9px;color:var(--muted);">มาก</span>
-        </div>
-      </div>
-
-      <div class="an-card" style="margin-bottom:14px;">
-        <div class="an-title">📍 จุดเสี่ยงสูง (Hotspot)</div>
-        <div id="an-hotspot"></div>
-      </div>
     </div>
+</div>
+
+<!-- BOTTOM NAV (mobile) -->
+<div class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <button class="bn-btn active" id="bn-dash" onclick="go('dash')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </button>
+    <button class="bn-btn" id="bn-verify" onclick="go('verify')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+      ยืนยันรายงาน
+    </button>
+    <button class="bn-btn" id="bn-more" onclick="toggleMoreMenu()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="19" cy="12" r="1.5" fill="currentColor"/></svg>
+      เพิ่มเติม
+    </button>
   </div>
 </div>
 
-<div class="an-tooltip" id="an-tooltip"></div>
+<!-- MORE MENU DRAWER (mobile) -->
+<div class="more-ov" id="more-ov" onclick="if(event.target===this)toggleMoreMenu()">
+  <div class="more-sh" id="more-sh">
+    <div class="mhandle"></div>
+    <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:2px;margin-bottom:12px;">เมนูเพิ่มเติม</div>
+    <button class="more-item" onclick="go('credits');toggleMoreMenu()">⭐ Credits พนักงาน</button>
+    <button class="more-item" onclick="go('warnings');toggleMoreMenu()">⚠ เพิ่มใบเตือน</button>
+    <button class="more-item" onclick="go('users');toggleMoreMenu()">🔐 จัดการสิทธิ์</button>
+  </div>
+</div>
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
@@ -561,16 +602,26 @@ const APP={vf:'pending',pendingReset:null};
 
 // ══ INIT ══
 document.addEventListener('DOMContentLoaded',()=>{
-  renderDash(); renderVerify(); renderCredits(); renderWarnHist(); renderUsers(); fillEmpDD(); updateBadge();
+  renderDash(); renderVerify(); renderCredits(); renderWarnHist(); renderUsers(); fillEmpDD(); updateBadge(); anRenderAll();
 });
 
 // ══ NAV ══
 function go(tab){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById(`p-${tab}`).classList.add('active');
-  document.getElementById(`t-${tab}`).classList.add('active');
+  document.getElementById(`p-${tab}`)?.classList.add('active');
+  document.getElementById(`t-${tab}`)?.classList.add('active');
+  // update bottom nav
+  document.querySelectorAll('.bn-btn').forEach(b=>b.classList.remove('active'));
+  if(tab==='dash') document.getElementById('bn-dash')?.classList.add('active');
+  else if(tab==='verify') document.getElementById('bn-verify')?.classList.add('active');
+  else document.getElementById('bn-more')?.classList.add('active');
   if(tab==='analytics') anRenderAll();
+  if(tab==='dash') anRenderAll();
+  window.scrollTo(0,0);
+}
+function toggleMoreMenu(){
+  document.getElementById('more-ov').classList.toggle('show');
 }
 function updateBadge(){
   const n=DB.reports.filter(r=>r.status==='pending').length;
