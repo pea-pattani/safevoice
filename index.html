@@ -2823,9 +2823,10 @@ function initCredits() {
 
 function cRenderWarnings() {
   const list = document.getElementById('c-warnings-list');
-  if (!DB.warnings.length) { list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px;font-size:13px;">🎉 ไม่มีใบเตือนที่มีผล</div>'; return; }
+  const myWarnings = DB.warnings.filter(w => w.emp_id === APP.loggedUser?.id);
+  if (!myWarnings.length) { list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px;font-size:13px;">🎉 ไม่มีใบเตือนที่มีผล</div>'; return; }
 
-  list.innerHTML = DB.warnings.map(w => {
+  list.innerHTML = myWarnings.map(w => {
     const isActive  = w.status === 'active';
     const canRedeem = isActive && APP.credits >= CFG.REDEEM_COST;
     let action = '';
@@ -3638,12 +3639,19 @@ function animNum(id, from, to, dur) {
 
 function fmtDate(s) {
   if (!s) return '';
+  const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  // ข้อมูลในระบบเก็บเป็น พ.ศ. (เช่น 2568-07-14) — parse ตรงๆ ไม่ผ่าน new Date()
+  const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) {
+    const yearBE = parseInt(m[1]);
+    const month  = parseInt(m[2]) - 1;
+    const day    = parseInt(m[3]);
+    return `${day} ${months[month]} ${yearBE}`;
+  }
   const d = new Date(s.replace(/-/g,'/'));
   if (isNaN(d)) return s;
-  const day = d.getDate();
-  const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
   const yearBE = d.getFullYear() + 543;
-  return `${day} ${months[d.getMonth()]} ${yearBE}`;
+  return `${d.getDate()} ${months[d.getMonth()]} ${yearBE}`;
 }
 
 function showToast(msg, type='') {
