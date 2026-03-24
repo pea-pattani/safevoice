@@ -201,7 +201,7 @@ body {
   text-align: center; margin-bottom: 24px;
 }
 .login-logo .logo-img-lg {
-  height: 96px; width: auto; margin: 0 auto 4px; display: block;
+  height: 96px; width: auto; margin: 0 auto 0; display: block;
 }
 .login-logo .li-icon {
   width: 48px; height: 48px; margin: 0 auto 10px;
@@ -226,7 +226,7 @@ body {
 
 /* role-btn CSS removed */
 
-.login-hint { font-size: 11px; color: var(--muted); text-align: center; margin-top: 14px; }
+.login-hint { font-size: 11px; color: var(--muted); text-align: center; margin-top: 14px; white-space: nowrap; }
 .login-hint span { color: var(--green); cursor: pointer; }
 
 /* ══════════════════════════════════════════════════════
@@ -554,8 +554,7 @@ body {
     <button class="btn-primary" onclick="doLogin()">เข้าสู่ระบบ</button>
 
     <div class="login-hint">
-      Demo: พนักงาน <span onclick="fillDemo('employee')">รหัสพนักงาน / 1234</span>
-      &nbsp;·&nbsp; จป. <span onclick="fillDemo('admin')">416146 / 1234</span>
+      แจ้งปัญหาการใช้งาน ติดต่อ <span>เจ้าหน้าที่ความปลอดภัย (จป.)</span>
     </div>
   </div>
 </div>
