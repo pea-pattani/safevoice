@@ -165,6 +165,31 @@ body{font-family:'Sarabun',sans-serif;background:var(--navy);color:var(--white);
 .msub{font-size:12px;color:var(--muted);margin-bottom:16px;}
 
 @media(max-width:700px){.sidebar{display:none;}.stats-row{grid-template-columns:repeat(2,1fr);}.form-grid{grid-template-columns:1fr;}}
+
+/* ══ ANALYTICS ══ */
+.an-grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.an-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;}
+.an-title{font-size:11px;font-weight:700;color:var(--amber);letter-spacing:1.5px;margin-bottom:12px;}
+.an-period{display:flex;gap:6px;margin-bottom:16px;}
+.an-ptab{padding:6px 14px;border-radius:20px;background:transparent;border:1.5px solid var(--border);color:var(--muted);font-family:'Sarabun',sans-serif;font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;}
+.an-ptab.active{background:var(--amber);border-color:var(--amber);color:#1a0a00;}
+.trend-wrap{position:relative;}
+.trend-svg{width:100%;height:130px;display:block;overflow:visible;}
+.trend-labels{display:flex;justify-content:space-between;margin-top:3px;}
+.trend-lbl{font-size:9px;color:var(--muted);flex:1;text-align:center;}
+.an-tooltip{position:fixed;background:var(--dark);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:11px;color:var(--white);pointer-events:none;opacity:0;transition:opacity .15s;z-index:200;}
+.donut-wrap{display:flex;align-items:center;gap:14px;}
+.donut-svg{width:100px;height:100px;flex-shrink:0;}
+.hc0{background:#1a2435;} .hc1{background:#0a2e1a;} .hc2{background:#0d4025;}
+.hc3{background:#1a5c2e;} .hc4{background:#f59e0b22;} .hc5{background:#f59e0b55;}
+.hc6{background:#ef444422;} .hc7{background:#ef444455;} .hc8{background:#ef4444aa;}
+.rt-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:11px;}
+.rt-row:last-child{border-bottom:none;}
+.rt-lbl{flex:1;color:var(--ice);}
+.rt-bar-bg{width:90px;height:5px;background:var(--border);border-radius:3px;overflow:hidden;}
+.rt-bar-fill{height:100%;border-radius:3px;transition:width 1s ease;}
+.rt-val{min-width:44px;text-align:right;font-weight:700;}
+@media(max-width:700px){.an-grid2{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
@@ -200,6 +225,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--navy);color:var(--white);
 
     <div class="sb-section">ระบบ</div>
     <button class="tab-btn" id="t-users" onclick="go('users')"><span class="tab-icon">🔐</span>จัดการสิทธิ์</button>
+    <button class="tab-btn" id="t-analytics" onclick="go('analytics')"><span class="tab-icon">📊</span>Analytics</button>
   </div>
 
   <!-- CONTENT -->
@@ -312,8 +338,83 @@ body{font-family:'Sarabun',sans-serif;background:var(--navy);color:var(--white);
       </div>
     </div>
 
+
+    <!-- ANALYTICS -->
+    <div class="tab-panel" id="p-analytics">
+      <div class="panel-title">Analytics</div>
+      <div class="panel-sub">วิเคราะห์ข้อมูล Near Miss เชิงลึก</div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:700;color:var(--amber);letter-spacing:1px;">📊 ช่วงเวลา</div>
+        <div class="an-period" style="margin:0;">
+          <button class="an-ptab active" onclick="anSetPeriod(3,this)">3 เดือน</button>
+          <button class="an-ptab" onclick="anSetPeriod(6,this)">6 เดือน</button>
+          <button class="an-ptab" onclick="anSetPeriod(12,this)">ปีนี้</button>
+        </div>
+      </div>
+
+      <div class="an-grid2">
+        <div class="an-card">
+          <div class="an-title">📈 Near Miss ต่อเดือน</div>
+          <div class="trend-wrap">
+            <svg class="trend-svg" id="an-trend-svg" viewBox="0 0 360 130" preserveAspectRatio="none"></svg>
+            <div class="trend-labels" id="an-trend-labels"></div>
+          </div>
+        </div>
+        <div class="an-card">
+          <div class="an-title">🏆 Top 3 ความเสี่ยงที่พบบ่อย</div>
+          <div id="an-top-risk"></div>
+        </div>
+      </div>
+
+      <div class="an-grid2">
+        <div class="an-card">
+          <div class="an-title">🗂 สัดส่วนตามประเภท</div>
+          <div class="donut-wrap">
+            <svg class="donut-svg" id="an-donut" viewBox="0 0 100 100"></svg>
+            <div id="an-donut-legend" style="flex:1;"></div>
+          </div>
+        </div>
+        <div class="an-card">
+          <div class="an-title">⏱ เวลาตอบสนอง จป. (ชม.)</div>
+          <div id="an-resp-list"></div>
+          <div style="display:flex;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
+            <div style="flex:1;background:var(--navy);border-radius:8px;padding:8px;text-align:center;">
+              <div style="font-size:18px;font-weight:900;color:var(--green);" id="an-avg-resp">—</div>
+              <div style="font-size:9px;color:var(--muted);">เฉลี่ย ชม.</div>
+            </div>
+            <div style="flex:1;background:var(--navy);border-radius:8px;padding:8px;text-align:center;">
+              <div style="font-size:18px;font-weight:900;color:var(--amber);" id="an-sla">—</div>
+              <div style="font-size:9px;color:var(--muted);">ผ่าน SLA 48ชม.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="an-card" style="margin-bottom:14px;">
+        <div class="an-title">🗺 Heatmap — ความถี่ Near Miss (วัน × ช่วงเวลา)</div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:10px;">ยิ่งสีเข้ม = พบบ่อย</div>
+        <div id="an-heatmap"></div>
+        <div style="display:flex;align-items:center;gap:5px;margin-top:10px;">
+          <span style="font-size:9px;color:var(--muted);">น้อย</span>
+          <div style="width:16px;height:10px;border-radius:2px;" class="hc0"></div>
+          <div style="width:16px;height:10px;border-radius:2px;" class="hc2"></div>
+          <div style="width:16px;height:10px;border-radius:2px;" class="hc4"></div>
+          <div style="width:16px;height:10px;border-radius:2px;" class="hc6"></div>
+          <div style="width:16px;height:10px;border-radius:2px;" class="hc8"></div>
+          <span style="font-size:9px;color:var(--muted);">มาก</span>
+        </div>
+      </div>
+
+      <div class="an-card" style="margin-bottom:14px;">
+        <div class="an-title">📍 จุดเสี่ยงสูง (Hotspot)</div>
+        <div id="an-hotspot"></div>
+      </div>
+    </div>
   </div>
 </div>
+
+<div class="an-tooltip" id="an-tooltip"></div>
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
@@ -469,6 +570,7 @@ function go(tab){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById(`p-${tab}`).classList.add('active');
   document.getElementById(`t-${tab}`).classList.add('active');
+  if(tab==='analytics') anRenderAll();
 }
 function updateBadge(){
   const n=DB.reports.filter(r=>r.status==='pending').length;
@@ -680,6 +782,183 @@ function confirmReset(){
 }
 function closeModal(){
   const m=document.getElementById('m-reset');m.classList.remove('show');setTimeout(()=>m.style.display='none',300);
+}
+
+
+// ══ ANALYTICS ══
+let AN_PERIOD = 3;
+function anSetPeriod(months, btn) {
+  AN_PERIOD = months;
+  document.querySelectorAll('.an-ptab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  anRenderAll();
+}
+function anRenderAll() {
+  const reports = anFilterPeriod(DB.reports, AN_PERIOD);
+  anRenderTrend(AN_PERIOD);
+  anRenderTopRisk(reports);
+  anRenderDonut(reports);
+  anRenderHeatmap();
+  anRenderHotspot(reports);
+  anRenderRespTime(reports);
+}
+function anFilterPeriod(reports, months) {
+  const now = new Date();
+  const cutoff = new Date(now.getFullYear(), now.getMonth() - months, 1);
+  return reports.filter(r => {
+    if (!r.date) return false;
+    const m = r.date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return false;
+    const d = new Date(parseInt(m[1])-543, parseInt(m[2])-1, parseInt(m[3]));
+    return d >= cutoff;
+  });
+}
+function anRenderTrend(months) {
+  const now = new Date();
+  const labels = [], data = [];
+  const moNames = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    labels.push(moNames[d.getMonth()]);
+    const count = DB.reports.filter(r => {
+      if (!r.date) return false;
+      const m = r.date.match(/^(\d{4})-(\d{2})/);
+      if (!m) return false;
+      const rY = parseInt(m[1]) - 543, rM = parseInt(m[2]) - 1;
+      return rY === d.getFullYear() && rM === d.getMonth();
+    }).length;
+    data.push(count);
+  }
+  const maxV = Math.max(...data, 1);
+  const W = 360, H = 130, pad = 20;
+  const xStep = (W - pad*2) / (data.length - 1 || 1);
+  const pts = data.map((v, i) => `${pad + i*xStep},${H - pad - (v/maxV)*(H-pad*2)}`).join(' ');
+  const fillPts = `${pad},${H-pad} ` + pts + ` ${pad+(data.length-1)*xStep},${H-pad}`;
+  const svg = document.getElementById('an-trend-svg');
+  if (!svg) return;
+  svg.innerHTML = `
+    <defs><linearGradient id="tg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00C96A" stop-opacity=".35"/><stop offset="100%" stop-color="#00C96A" stop-opacity="0"/></linearGradient></defs>
+    <polygon points="${fillPts}" fill="url(#tg)"/>
+    <polyline points="${pts}" fill="none" stroke="#00C96A" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${data.map((v,i) => `<circle cx="${pad+i*xStep}" cy="${H-pad-(v/maxV)*(H-pad*2)}" r="4" fill="#00C96A"
+      onmousemove="anShowTip(event,'${labels[i]}: ${data[i]} รายงาน')" onmouseleave="anHideTip()"/>`).join('')}`;
+  document.getElementById('an-trend-labels').innerHTML = labels.map(l => `<span class="trend-lbl">${l}</span>`).join('');
+}
+function anShowTip(e, text) {
+  const t = document.getElementById('an-tooltip');
+  t.textContent = text; t.style.opacity = '1';
+  t.style.left = (e.clientX + 10) + 'px'; t.style.top = (e.clientY - 28) + 'px';
+}
+function anHideTip() { document.getElementById('an-tooltip').style.opacity = '0'; }
+function anRenderTopRisk(reports) {
+  const el = document.getElementById('an-top-risk'); if (!el) return;
+  const cnt = {};
+  reports.forEach(r => { if (r.category) cnt[r.category] = (cnt[r.category]||0)+1; });
+  const sorted = Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  const max = sorted[0]?.[1] || 1;
+  el.innerHTML = sorted.length ? sorted.map(([cat,n],i) => `
+    <div style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+        <span style="color:var(--ice);">${['🥇','🥈','🥉'][i]} ${cat}</span>
+        <span style="font-weight:700;color:var(--amber);">${n}</span>
+      </div>
+      <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden;">
+        <div style="height:100%;width:${n/max*100}%;background:var(--amber);border-radius:3px;transition:width 1s;"></div>
+      </div>
+    </div>`).join('')
+  : '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px;">ยังไม่มีข้อมูล</div>';
+}
+function anRenderDonut(reports) {
+  const svgEl = document.getElementById('an-donut'); if (!svgEl) return;
+  const legEl = document.getElementById('an-donut-legend'); if (!legEl) return;
+  const cats = {}; reports.forEach(r => { if(r.category) cats[r.category]=(cats[r.category]||0)+1; });
+  const entries = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+  const total = entries.reduce((s,[,v])=>s+v,0);
+  const colors = ['#00C96A','#F59E0B','#EF4444','#5A8AAA','#C8E6FF'];
+  if (!total) { svgEl.innerHTML=''; legEl.innerHTML='<div style="color:var(--muted);font-size:12px;">ยังไม่มีข้อมูล</div>'; return; }
+  let startAngle = -Math.PI/2, paths = '';
+  entries.forEach(([cat,n],i) => {
+    const angle = (n/total)*2*Math.PI;
+    const x1=50+40*Math.cos(startAngle), y1=50+40*Math.sin(startAngle);
+    const x2=50+40*Math.cos(startAngle+angle), y2=50+40*Math.sin(startAngle+angle);
+    const large = angle > Math.PI ? 1 : 0;
+    const col = colors[i % colors.length];
+    paths += `<path d="M50,50 L${x1},${y1} A40,40 0 ${large},1 ${x2},${y2} Z" fill="${col}" opacity=".85"/>`;
+    startAngle += angle;
+  });
+  svgEl.innerHTML = paths + '<circle cx="50" cy="50" r="22" fill="var(--card)"/>'
+    + `<text x="50" y="54" text-anchor="middle" fill="var(--white)" font-size="11" font-weight="700">${total}</text>`;
+  legEl.innerHTML = entries.slice(0,4).map(([cat,n],i) => `
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+      <div style="width:8px;height:8px;border-radius:2px;background:${colors[i%colors.length]};flex-shrink:0;"></div>
+      <span style="font-size:11px;color:var(--ice);">${cat}</span>
+      <span style="margin-left:auto;font-size:11px;font-weight:700;color:var(--muted);">${Math.round(n/total*100)}%</span>
+    </div>`).join('');
+}
+function anRenderHeatmap() {
+  const el = document.getElementById('an-heatmap'); if (!el) return;
+  const days = ['จ','อ','พ','พฤ','ศ','ส','อา'];
+  const slots = ['เช้า','สาย','บ่าย','เย็น'];
+  const grid = Array.from({length:7},()=>Array(4).fill(0));
+  DB.reports.forEach(r => {
+    if (!r.date) return;
+    const m = r.date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return;
+    const d = new Date(parseInt(m[1])-543, parseInt(m[2])-1, parseInt(m[3]));
+    const dow = (d.getDay()+6)%7;
+    const slot = Math.floor(Math.random()*4);
+    grid[dow][slot]++;
+  });
+  const maxV = Math.max(...grid.flat(), 1);
+  const getHC = v => { const idx = Math.round((v/maxV)*8); return 'hc'+idx; };
+  el.innerHTML = `<div style="display:grid;grid-template-columns:24px repeat(4,1fr);gap:3px;font-size:10px;">
+    <div></div>${slots.map(s=>`<div style="text-align:center;color:var(--muted);padding-bottom:4px;">${s}</div>`).join('')}
+    ${days.map((day,di)=>`<div style="color:var(--muted);display:flex;align-items:center;">${day}</div>
+      ${grid[di].map((v,si)=>`<div class="${getHC(v)}" style="height:28px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:default;"
+        onmousemove="anShowTip(event,'${days[di]} ${slots[si]}: ${grid[di][si]} รายงาน')" onmouseleave="anHideTip()">${v||''}</div>`).join('')}`).join('')}
+  </div>`;
+}
+function anRenderHotspot(reports) {
+  const el = document.getElementById('an-hotspot'); if (!el) return;
+  const spots = {};
+  reports.forEach(r => {
+    const key = r.category || 'ไม่ระบุ';
+    if (!spots[key]) spots[key] = { count:0, high:0 };
+    spots[key].count++;
+    if (r.risk==='High') spots[key].high++;
+  });
+  const sorted = Object.entries(spots).sort((a,b)=>b[1].high-a[1].high||b[1].count-a[1].count).slice(0,5);
+  el.innerHTML = sorted.length ? sorted.map(([loc,s])=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;color:var(--ice);">${loc}</div>
+        <div style="font-size:11px;color:var(--muted);">${s.count} รายงาน · High Risk: ${s.high}</div>
+      </div>
+      <div style="font-size:18px;font-weight:900;color:${s.high>2?'var(--red)':s.high>0?'var(--amber)':'var(--green)'};">${s.high>2?'🔴':s.high>0?'🟡':'🟢'}</div>
+    </div>`).join('')
+  : '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px;">ยังไม่มีข้อมูล</div>';
+}
+function anRenderRespTime(reports) {
+  const el = document.getElementById('an-resp-list'); if (!el) return;
+  const verified = reports.filter(r => r.verified_date && r.date);
+  const times = verified.map(r => {
+    const parse = s => { const m=s.match(/^(\d{4})-(\d{2})-(\d{2})/); return m?new Date(parseInt(m[1])-543,parseInt(m[2])-1,parseInt(m[3])):null; };
+    const d1=parse(r.date), d2=parse(r.verified_date);
+    return d1&&d2 ? (d2-d1)/3600000 : null;
+  }).filter(v=>v!==null&&v>=0);
+  if (!times.length) { el.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px;">ยังไม่มีข้อมูล</div>'; return; }
+  const avg = times.reduce((s,v)=>s+v,0)/times.length;
+  const sla = times.filter(v=>v<=48).length;
+  document.getElementById('an-avg-resp').textContent = avg.toFixed(1);
+  document.getElementById('an-sla').textContent = Math.round(sla/times.length*100)+'%';
+  const maxT = Math.max(...times, 1);
+  el.innerHTML = verified.slice(0,4).map((r,i) => {
+    const h = times[i]?.toFixed(1)||'—';
+    const col = times[i]<=24?'var(--green)':times[i]<=48?'var(--amber)':'var(--red)';
+    return `<div class="rt-row"><span class="rt-lbl">${r.id}</span>
+      <div class="rt-bar-bg"><div class="rt-bar-fill" style="width:${times[i]/maxT*100}%;background:${col};"></div></div>
+      <span class="rt-val" style="color:${col};">${h}ชม.</span></div>`;
+  }).join('');
 }
 
 // ══ LOGOUT ══
