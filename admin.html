@@ -642,29 +642,52 @@ async function sbPatch(table, uuid, data) {
 // ══ INIT ══
 document.addEventListener('DOMContentLoaded', async () => {
   showToast('⌛ กำลังโหลดข้อมูล...', 'amber');
+  // โหลด employees จาก Supabase ก่อน → ได้ UUID จริง → ใช้ map ชื่อใน loadReports
+  await loadEmployees();
   await loadReports();
   renderDash(); renderVerify(); renderCredits(); renderWarnHist(); renderUsers(); fillEmpDD(); updateBadge(); anRenderAll();
   showToast('✅ โหลดข้อมูลสำเร็จ');
 });
 
+// โหลด employees จาก Supabase — ได้ทั้ง UUID (id) และ emp_code
+// เก็บใน DB.employees แทน hardcode เดิม
+async function loadEmployees() {
+  try {
+    const rows = await sbGet('employees', 'select=id,emp_code,full_name,department,role,credits,total_redeems');
+    if (rows && rows.length > 0) {
+      // map ให้ตรงกับ format ที่ admin ใช้ทั่วไป
+      // id = emp_code (ใช้ใน UI), _uuid = UUID จริง (ใช้ patch)
+      DB.employees = rows.map(r => ({
+        id:      r.emp_code,      // ← ใช้ emp_code เป็น key หลักใน UI
+        _uuid:   r.id,            // ← UUID จริงจาก Supabase (ใช้ตอน patch)
+        name:    r.full_name,
+        dept:    r.department,
+        role:    r.role,
+        credits: r.credits        || 0,
+        redeems: r.total_redeems  || 0,
+      }));
+      console.log(`✅ โหลด ${DB.employees.length} พนักงานจาก Supabase`);
+    }
+    // ถ้า Supabase ว่าง → ใช้ hardcode เดิมใน DB.employees
+  } catch(e) {
+    console.warn('loadEmployees error, using hardcoded:', e.message);
+  }
+}
+
 // ══ loadReports: ดึง near_miss_reports อย่างเดียว (ไม่ join)
-// แล้ว resolve ชื่อพนักงานจาก DB.employees ใน memory
+// resolve ชื่อพนักงานจาก DB.employees โดยใช้ _uuid ที่โหลดมาแล้ว
 async function loadReports() {
   try {
     const rows = await sbGet('near_miss_reports', 'select=*');
     if (rows && rows.length > 0) {
-      // ✅ มีข้อมูลจริงจาก Supabase
       DB.reports = rows.map(r => {
-        // หาชื่อพนักงานจาก DB.employees (emp_id อาจเป็น UUID หรือ emp_code)
-        const emp = DB.employees.find(e =>
-          e.id === r.employee_id ||
-          e._uuid === r.employee_id
-        );
+        // หาพนักงานจาก _uuid (UUID จริงจาก Supabase)
+        const emp = DB.employees.find(e => e._uuid === r.employee_id);
         return {
           id:            r.report_code || `NM-${r.id.slice(0,8)}`,
           _uuid:         r.id,
           date:          r.created_at ? r.created_at.split('T')[0] : '',
-          emp_id:        r.employee_id || null,
+          emp_id:        emp?.id || r.employee_id || null, // emp_code หรือ UUID
           emp_name:      r.is_anonymous ? 'นิรนาม' : (emp?.name || '—'),
           text:          r.report_text,
           risk:          r.risk_level,
@@ -678,15 +701,8 @@ async function loadReports() {
           reject_reason: r.reject_reason|| null,
         };
       });
-      // sync UUID ของ employees จาก reports (เพื่อให้ doVer หาเจอ)
-      DB.reports.forEach(r => {
-        if (!r.emp_id || r.is_anon) return;
-        const e = DB.employees.find(emp => emp.id === r.emp_id);
-        if (e) e._uuid = r.emp_id; // เก็บ UUID จริงไว้ใช้ตอน patch credits
-      });
       console.log(`✅ โหลด ${DB.reports.length} รายงานจาก Supabase`);
     } else {
-      // Supabase ว่าง → ใช้ DEMO_REPORTS
       DB.reports = [...DEMO_REPORTS];
       console.log('ℹ️ ใช้ Demo data');
     }
@@ -808,7 +824,6 @@ async function doVer(id){
   const r=DB.reports.find(x=>x.id===id); if(!r) return;
   const today = new Date().toISOString();
 
-  // ถ้าเป็น demo data (_uuid ขึ้นต้นด้วย 'demo-') → อัปเดตแค่ local state
   if(!r._uuid || r._uuid.startsWith('demo-')){
     r.status='verified'; r.verified_date=today.split('T')[0]; r.verified_by='จป.';
     const e=DB.employees.find(x=>x.id===r.emp_id);
@@ -818,18 +833,17 @@ async function doVer(id){
     return;
   }
 
-  // Supabase จริง — patch โดยตรง
   const ok = await sbPatch('near_miss_reports', r._uuid, {
     status:      'verified',
     verified_at: today,
     verified_by: null
   });
-  if(!ok){ showToast('❌ บันทึกไม่สำเร็จ — ตรวจ console','red'); return; }
+  if(!ok){ showToast('❌ บันทึกไม่สำเร็จ','red'); return; }
 
   r.status='verified'; r.verified_date=today.split('T')[0]; r.verified_by='จป.';
-  // หา employee จาก UUID ที่ได้จาก Supabase
-  const e = DB.employees.find(x => x._uuid === r.emp_id || x.id === r.emp_id);
-  if(e && !r.is_anon) e.credits += r.credits;
+  // emp_id ตอนนี้เป็น emp_code แล้ว → หาตรงๆ ได้เลย
+  const e=DB.employees.find(x=>x.id===r.emp_id);
+  if(e&&!r.is_anon) e.credits += r.credits;
   renderVerify(); renderDash(); renderCredits(); updateBadge();
   showToast(`✅ ยืนยัน ${id} — +${r.credits} Credits`);
 }
