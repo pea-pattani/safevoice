@@ -1521,7 +1521,7 @@ async function loadMyWarningsFromSB() {
       const mapped = rows.map(r => ({
         id:            r.warning_code || r.id,
         _uuid:         r.id,
-        emp_id:        empCode,
+        emp_id:        empCode, // ใช้ emp_code เป็น key ใน UI
         date:          r.created_at ? r.created_at.split('T')[0] : '',
         issue:         r.issue,
         impact:        r.impact || '—',
@@ -2373,6 +2373,8 @@ async function rSubmit() {
     credits_given: credits,
     photo_count:   APP.rPhotos.length,
     status:        'pending'
+    // ❌ ไม่ส่ง emp_code  — ไม่มีใน schema
+    // ❌ ไม่ส่ง photo_urls — ไม่มีใน schema
   };
 
   // บันทึกลง Supabase (async, ไม่ block UI)
@@ -2483,7 +2485,7 @@ function initCredits() {
 
 function cRenderWarnings() {
   const list = document.getElementById('c-warnings-list');
-  const myWarnings = DB.warnings.filter(w => w.emp_id === APP.loggedUser?.id);
+  const myWarnings = DB.warnings.filter(w => w.emp_id === APP.loggedUser?.id || w.emp_id === APP.loggedUser?.emp_code);
   if (!myWarnings.length) { list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px;font-size:13px;">🎉 ไม่มีใบเตือนที่มีผล</div>'; return; }
 
   list.innerHTML = myWarnings.map(w => {
