@@ -1460,25 +1460,21 @@ function afterLogin(role) {
     } catch {}
     location.href = 'admin.html';
   } else {
-    // โหลดรายงานจาก Supabase (ถ้ามี) แล้วค่อยแสดง dashboard
-    loadMyReportsFromSB().then(() => navTo('dashboard'));
+    // โหลดรายงานและใบเตือนจาก Supabase แล้วค่อยแสดง dashboard
+    Promise.all([loadMyReportsFromSB(), loadMyWarningsFromSB()])
+      .then(() => navTo('dashboard'));
   }
 }
 
 // ── โหลดรายงานจาก Supabase ด้วย employee_id (UUID จริง) ──
-// pea-health pattern: เราได้ UUID แล้วตอน login → ใช้ได้ทันที ไม่ต้อง lookup อีก
 async function loadMyReportsFromSB() {
   if (CFG.SUPABASE_URL === 'YOUR_SUPABASE_URL') return;
   const uid     = APP.loggedUser?.id;
   const empCode = APP.loggedUser?.emp_code;
   if (!uid) return;
-
-  // ถ้า uid === empCode แสดงว่ายังเป็น demo mode (ไม่มี UUID จริง)
-  // ไม่ต้อง query — ใช้ DB.reports ที่มี emp_id = empCode อยู่แล้ว
-  if (uid === empCode) return;
+  if (uid === empCode) return; // demo mode
 
   try {
-    // ✅ uid คือ UUID จริงจาก Supabase — query ได้ทันที
     const rows = await SB.select('near_miss_reports',
       `employee_id=eq.${uid}&select=*&order=created_at.desc`,
       CFG.SUPABASE_KEY
@@ -1488,7 +1484,7 @@ async function loadMyReportsFromSB() {
         id:            r.report_code || `NM-${r.id.slice(0,8)}`,
         _uuid:         r.id,
         date:          r.created_at ? r.created_at.split('T')[0] : '',
-        emp_id:        uid,
+        emp_id:        empCode, // ใช้ emp_code เป็น key ใน UI
         emp_name:      APP.loggedUser.name,
         text:          r.report_text,
         risk:          r.risk_level,
@@ -1503,11 +1499,40 @@ async function loadMyReportsFromSB() {
         verified_date: r.verified_at   ? r.verified_at.split('T')[0] : null,
         reject_reason: r.reject_reason || null,
       }));
-      // แทนที่รายการ demo ของ user นี้ด้วยข้อมูลจริงจาก Supabase
       DB.reports = DB.reports.filter(r => r.emp_id !== uid && r.emp_id !== empCode);
       DB.reports = [...mapped, ...DB.reports];
     }
   } catch(e) { console.warn('loadMyReports error:', e.message); }
+}
+
+// ── โหลดใบเตือนของพนักงานจาก Supabase ──
+async function loadMyWarningsFromSB() {
+  if (CFG.SUPABASE_URL === 'YOUR_SUPABASE_URL') return;
+  const uid     = APP.loggedUser?.id;
+  const empCode = APP.loggedUser?.emp_code;
+  if (!uid || uid === empCode) return; // demo mode
+
+  try {
+    const rows = await SB.select('warnings',
+      `employee_id=eq.${uid}&select=*&order=created_at.desc`,
+      CFG.SUPABASE_KEY
+    );
+    if (rows && rows.length >= 0) {
+      const mapped = rows.map(r => ({
+        id:            r.warning_code || r.id,
+        _uuid:         r.id,
+        emp_id:        empCode, // ใช้ emp_code เป็น key ใน UI
+        date:          r.created_at ? r.created_at.split('T')[0] : '',
+        issue:         r.issue,
+        impact:        r.impact || '—',
+        status:        r.status || 'active',
+        redeemed_date: r.redeemed_at ? r.redeemed_at.split('T')[0] : null,
+      }));
+      // แทนที่ demo warnings ของ user นี้
+      DB.warnings = DB.warnings.filter(w => w.emp_id !== empCode && w.emp_id !== uid);
+      DB.warnings = [...mapped, ...DB.warnings];
+    }
+  } catch(e) { console.warn('loadMyWarnings error:', e.message); }
 }
 
 // ── Logout ──
@@ -1539,34 +1564,53 @@ document.addEventListener('DOMContentLoaded', () => {
 // ═══════════════════════════════════════════════
 //  DASHBOARD
 // ═══════════════════════════════════════════════
+// ── ดึง credits ล่าสุดจาก Supabase ทุกครั้งที่เปิด dashboard/credits
+// เพื่อให้แสดงแต้มที่ admin verify แล้วทันที
+async function refreshCreditsFromSB() {
+  if (CFG.SUPABASE_URL === 'YOUR_SUPABASE_URL') return;
+  const empCode = APP.loggedUser?.emp_code;
+  if (!empCode) return;
+  try {
+    const rows = await SB.select('employees', `emp_code=eq.${empCode}&select=id,credits,total_redeems`, CFG.SUPABASE_KEY);
+    if (rows && rows[0]) {
+      APP.credits              = rows[0].credits       || 0;
+      APP.loggedUser.credits   = rows[0].credits       || 0;
+      APP.loggedUser.redeems   = rows[0].total_redeems || 0;
+    }
+    // sync warnings ด้วยทุกครั้ง
+    await loadMyWarningsFromSB();
+  } catch(e) { console.warn('refreshCredits error:', e.message); }
+}
+
 function initDashboard() {
   const u = APP.loggedUser; if (!u) return;
-  document.getElementById('d-name').textContent = u.name;
-  document.getElementById('d-dept').textContent = u.dept;
-  document.getElementById('d-id').textContent   = u.emp_code || u.id;
 
-  const myReports  = DB.reports.filter(r => r.emp_id === u.id || r.emp_id === u.emp_code);
-  const activeWarn = DB.warnings.filter(w => w.emp_id === u.id || w.emp_id === u.emp_code)
-                                  .filter(w => w.status === 'active');
+  // ดึง credits ล่าสุดจาก Supabase แล้วค่อย render
+  refreshCreditsFromSB().then(() => {
+    document.getElementById('d-name').textContent = u.name;
+    document.getElementById('d-dept').textContent = u.dept;
+    document.getElementById('d-id').textContent   = u.emp_code || u.id;
 
-  animNum('d-ring-num', 0, APP.credits, 800);
-  animNum('d-reports',  0, myReports.length, 600);
-  animNum('d-warns',    0, activeWarn.length, 700);
-  animNum('d-reds',     0, u.redeems, 800);
+    const myReports  = DB.reports.filter(r => r.emp_id === u.id || r.emp_id === u.emp_code);
+    const activeWarn = DB.warnings.filter(w => w.emp_id === u.id || w.emp_id === u.emp_code)
+                                    .filter(w => w.status === 'active');
 
-  const circ = 2*Math.PI*34;
-  const pct  = Math.min((APP.credits % CFG.REDEEM_COST) / CFG.REDEEM_COST, 1);
-  setTimeout(() => { document.getElementById('d-ring').style.strokeDashoffset = circ*(1-pct); }, 150);
+    animNum('d-ring-num', 0, APP.credits, 800);
+    animNum('d-reports',  0, myReports.length, 600);
+    animNum('d-warns',    0, activeWarn.length, 700);
+    animNum('d-reds',     0, u.redeems, 800);
 
-  const filled = APP.credits % CFG.REDEEM_COST;
-  document.getElementById('d-prog-txt').textContent = `${filled}/300`;
-  setTimeout(() => { document.getElementById('d-prog-fill').style.width = (filled/CFG.REDEEM_COST*100)+'%'; }, 300);
+    const circ = 2*Math.PI*34;
+    const pct  = Math.min((APP.credits % CFG.REDEEM_COST) / CFG.REDEEM_COST, 1);
+    setTimeout(() => { document.getElementById('d-ring').style.strokeDashoffset = circ*(1-pct); }, 150);
 
-  // Notification
-  document.getElementById('notifDot').style.display = activeWarn.length ? 'block' : 'none';
+    const filled = APP.credits % CFG.REDEEM_COST;
+    document.getElementById('d-prog-txt').textContent = `${filled}/300`;
+    setTimeout(() => { document.getElementById('d-prog-fill').style.width = (filled/CFG.REDEEM_COST*100)+'%'; }, 300);
 
-  // Warnings
-  const wrapEl = document.getElementById('d-warnings');
+    document.getElementById('notifDot').style.display = activeWarn.length ? 'block' : 'none';
+
+    const wrapEl = document.getElementById('d-warnings');
   wrapEl.innerHTML = activeWarn.map(w => `
     <div class="warning-alert fade-up">
       <div><div class="wa-tag">⚠ ใบเตือนที่ยังมีผล · ${w.id}</div>
@@ -1605,6 +1649,7 @@ function initDashboard() {
   // History
   renderDashHistory(myReports);
   document.getElementById('d-emp-badge-r') && (document.getElementById('d-emp-badge-r').textContent = u.emp_code || u.id);
+  }); // end refreshCreditsFromSB().then()
 }
 
 function renderDashHistory(reports) {
@@ -2418,20 +2463,23 @@ function initCredits() {
   document.getElementById('c-emp-id').textContent = u.emp_code || u.id;
   document.getElementById('c-name').textContent   = u.name;
 
-  animNum('c-ring-num', 0, APP.credits, 900);
-  const circ = 2*Math.PI*40;
-  const pct  = Math.min((APP.credits % CFG.REDEEM_COST) / CFG.REDEEM_COST, 1);
-  setTimeout(() => { document.getElementById('c-ring').style.strokeDashoffset = circ*(1-pct); }, 150);
+  // ดึง credits ล่าสุดจาก Supabase แล้วค่อย render วงล้อ
+  refreshCreditsFromSB().then(() => {
+    animNum('c-ring-num', 0, APP.credits, 900);
+    const circ = 2*Math.PI*40;
+    const pct  = Math.min((APP.credits % CFG.REDEEM_COST) / CFG.REDEEM_COST, 1);
+    setTimeout(() => { document.getElementById('c-ring').style.strokeDashoffset = circ*(1-pct); }, 150);
 
-  const filled = APP.credits % CFG.REDEEM_COST;
-  document.getElementById('c-prog-txt').textContent  = `${filled}/300`;
-  setTimeout(() => { document.getElementById('c-prog-fill').style.width = (filled/CFG.REDEEM_COST*100)+'%'; }, 300);
-  document.getElementById('c-prog-note').textContent = filled >= CFG.REDEEM_COST
-    ? '✓ พร้อม Redeem แล้ว!'
-    : `ต้องการอีก ${CFG.REDEEM_COST - filled} แต้ม`;
+    const filled = APP.credits % CFG.REDEEM_COST;
+    document.getElementById('c-prog-txt').textContent  = `${filled}/300`;
+    setTimeout(() => { document.getElementById('c-prog-fill').style.width = (filled/CFG.REDEEM_COST*100)+'%'; }, 300);
+    document.getElementById('c-prog-note').textContent = filled >= CFG.REDEEM_COST
+      ? '✓ พร้อม Redeem แล้ว!'
+      : `ต้องการอีก ${CFG.REDEEM_COST - filled} แต้ม`;
 
-  cRenderWarnings();
-  cRenderTransactions();
+    cRenderWarnings();
+    cRenderTransactions();
+  });
 }
 
 function cRenderWarnings() {
