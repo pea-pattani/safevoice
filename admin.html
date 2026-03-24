@@ -833,27 +833,24 @@ async function doVer(id){
     return;
   }
 
+  const adminName = (()=>{ try{ return JSON.parse(sessionStorage.getItem('sv_session')||'{}').user_name||'จป.'; }catch{ return 'จป.'; } })();
+
   // 1) อัปเดต status ของรายงาน
   const ok = await sbPatch('near_miss_reports', r._uuid, {
     status:      'verified',
     verified_at: today,
-    verified_by: null
+    verified_by: adminName
   });
   if(!ok){ showToast('❌ บันทึกไม่สำเร็จ','red'); return; }
 
   // 2) บวก credits ให้พนักงานใน Supabase + บันทึก credit_transactions
   if(!r.is_anon && r.credits > 0) {
     const emp = DB.employees.find(x => x.id === r.emp_id);
-    console.log('doVer emp found:', emp, 'r.emp_id:', r.emp_id);
-    console.log('emp._uuid:', emp?._uuid, 'newCredits:', (emp?.credits||0) + r.credits);
     if(emp && emp._uuid) {
       const newCredits = (emp.credits || 0) + r.credits;
-      // patch employees.credits
       const patchOk = await sbPatch('employees', emp._uuid, { credits: newCredits });
-      console.log('patch employees result:', patchOk);
       if(patchOk) emp.credits = newCredits;
 
-      // insert credit_transactions
       try {
         await fetch(`${SB_URL}/rest/v1/credit_transactions`, {
           method: 'POST',
@@ -867,14 +864,13 @@ async function doVer(id){
             report_id:     r._uuid
           })
         });
-        console.log('credit_transactions inserted ✅');
       } catch(e) { console.warn('insert credit_transactions error:', e.message); }
     } else {
-      console.warn('emp._uuid missing — cannot patch credits. emp:', emp);
+      showToast(`⚠ ยืนยันแล้ว แต่ไม่พบข้อมูลพนักงาน — credits ไม่ถูกบันทึก`, 'amber');
     }
   }
 
-  r.status='verified'; r.verified_date=today.split('T')[0]; r.verified_by='จป.';
+  r.status='verified'; r.verified_date=today.split('T')[0]; r.verified_by=adminName;
   renderVerify(); renderDash(); renderCredits(); updateBadge();
   showToast(`✅ ยืนยัน ${id} — +${r.credits} Credits`);
 }
@@ -892,16 +888,16 @@ async function doRej(id){
     return;
   }
 
-  // Supabase จริง — patch โดยตรง
+  const adminName = (()=>{ try{ return JSON.parse(sessionStorage.getItem('sv_session')||'{}').user_name||'จป.'; }catch{ return 'จป.'; } })();
   const ok = await sbPatch('near_miss_reports', r._uuid, {
     status:        'rejected',
     reject_reason: reason,
     verified_at:   new Date().toISOString(),
-    verified_by:   null
+    verified_by:   adminName
   });
   if(!ok){ showToast('❌ บันทึกไม่สำเร็จ','red'); return; }
 
-  r.status='rejected'; r.reject_reason=reason;
+  r.status='rejected'; r.reject_reason=reason; r.verified_by=adminName;
   renderVerify(); renderDash(); updateBadge();
   showToast(`✗ ปฏิเสธ ${id}`,'red');
 }
