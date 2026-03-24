@@ -833,6 +833,7 @@ async function doVer(id){
     return;
   }
 
+  // 1) อัปเดต status ของรายงาน
   const ok = await sbPatch('near_miss_reports', r._uuid, {
     status:      'verified',
     verified_at: today,
@@ -840,10 +841,22 @@ async function doVer(id){
   });
   if(!ok){ showToast('❌ บันทึกไม่สำเร็จ','red'); return; }
 
+  // 2) บวก credits ให้พนักงานใน Supabase (ถ้าไม่ใช่นิรนาม)
+  if(!r.is_anon && r.credits > 0) {
+    const emp = DB.employees.find(x => x.id === r.emp_id);
+    console.log('doVer emp found:', emp, 'r.emp_id:', r.emp_id);
+    console.log('emp._uuid:', emp?._uuid, 'newCredits:', (emp?.credits||0) + r.credits);
+    if(emp && emp._uuid) {
+      const newCredits = (emp.credits || 0) + r.credits;
+      const patchOk = await sbPatch('employees', emp._uuid, { credits: newCredits });
+      console.log('patch employees result:', patchOk);
+      if(patchOk) emp.credits = newCredits;
+    } else {
+      console.warn('emp._uuid missing — cannot patch credits. emp:', emp);
+    }
+  }
+
   r.status='verified'; r.verified_date=today.split('T')[0]; r.verified_by='จป.';
-  // emp_id ตอนนี้เป็น emp_code แล้ว → หาตรงๆ ได้เลย
-  const e=DB.employees.find(x=>x.id===r.emp_id);
-  if(e&&!r.is_anon) e.credits += r.credits;
   renderVerify(); renderDash(); renderCredits(); updateBadge();
   showToast(`✅ ยืนยัน ${id} — +${r.credits} Credits`);
 }
