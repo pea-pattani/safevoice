@@ -1439,19 +1439,6 @@ function loginWithMock(id, pw) {
 
   APP.loggedUser = { id, emp_code: id, name: user.name, dept: user.dept, role: user.role, credits: user.credits, redeems: user.redeems };
   APP.credits    = user.credits;
-
-  // ดึง UUID จาก employees table (RLS ปิด ใช้ anon key ได้)
-  if (CFG.SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
-    SB.select('employees', `emp_code=eq.${id}&select=id,credits`, CFG.SUPABASE_KEY)
-      .then(rows => {
-        if (rows && rows[0]) {
-          APP.loggedUser.id = rows[0].id; // เปลี่ยนเป็น UUID จริง
-          APP.loggedUser.credits = rows[0].credits;
-          APP.credits = rows[0].credits;
-        }
-      }).catch(() => {});
-  }
-
   afterLogin(user.role);
 }
 
@@ -1473,16 +1460,28 @@ function afterLogin(role) {
 async function loadMyReportsFromSB() {
   if (CFG.SUPABASE_URL === 'YOUR_SUPABASE_URL') return;
   try {
-    // รอให้ UUID พร้อมก่อน (Mock login ดึง UUID async)
-    await new Promise(r => setTimeout(r, 600));
-    const uid = APP.loggedUser?.id;
-    if (!uid) return;
+    // ดึง UUID จาก employees ก่อน ถ้ายังไม่มี
+    const empCode = APP.loggedUser?.emp_code;
+    if (!empCode) return;
+
+    // ดึง employee UUID
+    const empRows = await SB.select('employees', `emp_code=eq.${empCode}&select=id,credits,total_redeems`, CFG.SUPABASE_KEY);
+    if (empRows && empRows[0]) {
+      APP.loggedUser.id = empRows[0].id;
+      APP.loggedUser.credits = empRows[0].credits;
+      APP.loggedUser.redeems = empRows[0].total_redeems;
+      APP.credits = empRows[0].credits;
+    }
+
+    const uid = APP.loggedUser.id;
+    if (!uid || uid === empCode) return; // ยังไม่ได้ UUID จริง
+
+    // ดึงรายงานของพนักงาน
     const rows = await SB.select('near_miss_reports',
       `employee_id=eq.${uid}&select=*&order=created_at.desc`,
       CFG.SUPABASE_KEY
     );
     if (rows && rows.length > 0) {
-      // map field ให้ตรงกับ local DB format
       const mapped = rows.map(r => ({
         id:            r.report_code || r.id,
         _uuid:         r.id,
@@ -1501,8 +1500,7 @@ async function loadMyReportsFromSB() {
         verified_date: r.verified_at ? r.verified_at.split('T')[0] : null,
         reject_reason: r.reject_reason || null,
       }));
-      // ผสานกับ DB.reports (ลบของเก่าของ user นี้ออกก่อน)
-      DB.reports = DB.reports.filter(r => r.emp_id !== uid);
+      DB.reports = DB.reports.filter(r => r.emp_id !== uid && r.emp_id !== empCode);
       DB.reports = [...mapped, ...DB.reports];
     }
   } catch(e) { console.warn('loadMyReports error', e); }
