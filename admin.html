@@ -942,16 +942,18 @@ async function loadWarnings() {
     const rows = await sbGet('warnings', 'select=*');
     if (rows && rows.length > 0) {
       DB.warnings = rows.map(r => {
-        const emp = DB.employees.find(e => e._uuid === r.employee_id);
+        const emp = DB.employees.find(e => e._uuid === r.employee_id)
+                 || DB.employees.find(e => e.id    === r.employee_id);
         return {
-          id:       r.warning_code || r.id,
-          _uuid:    r.id,
-          emp_id:   emp?.id || r.employee_id,
-          emp_name: emp?.name || '—',
-          date:     r.created_at ? r.created_at.split('T')[0] : '',
-          issue:    r.issue,
-          impact:   r.impact || '—',
-          status:   r.status || 'active',
+          id:            r.warning_code || r.id,
+          _uuid:         r.id,
+          emp_id:        emp?.id || r.employee_id,
+          emp_uuid:      r.employee_id,
+          emp_name:      emp?.name || '—',
+          date:          r.created_at ? r.created_at.split('T')[0] : '',
+          issue:         r.issue,
+          impact:        r.impact || '—',
+          status:        r.status || 'active',
           redeemed_date: r.redeemed_at ? r.redeemed_at.split('T')[0] : null,
         };
       });
@@ -965,29 +967,58 @@ async function submitWarning(){
   const cnt=parseInt(document.getElementById('w-cnt').value)||1;
   if(!empId){showToast('กรุณาเลือกพนักงาน','amber');return;}
   if(!issue){showToast('กรุณาระบุเรื่องใบเตือน','amber');return;}
+
   const emp=DB.employees.find(e=>e.id===empId);
   const today=new Date().toISOString().split('T')[0];
   const wid='W-'+today.replace(/-/g,'')+'-'+String(DB.warnings.length+1).padStart(4,'0');
 
-  // บันทึกลง Supabase — ตรง schema: warning_code, employee_id, issue, impact, status
+  // ── resolve UUID จาก Supabase ถ้า _uuid ยังไม่มี ──
+  let empUUID = emp?._uuid || null;
+  if (!empUUID) {
+    try {
+      const res = await fetch(`${SB_URL}/rest/v1/employees?emp_code=eq.${empId}&select=id`, { headers: sbHeaders });
+      const rows = res.ok ? await res.json() : [];
+      if (rows.length > 0) {
+        empUUID = rows[0].id;
+        if (emp) emp._uuid = empUUID; // cache ไว้ใช้ต่อ
+      }
+    } catch(e) { console.warn('resolve emp UUID error:', e.message); }
+  }
+
+  if (!empUUID) {
+    showToast('❌ ไม่พบพนักงานในระบบ Supabase — ไม่สามารถบันทึกได้', 'red');
+    return;
+  }
+
+  // บันทึกลง Supabase — employee_id ต้องเป็น UUID จริงเสมอ
   try {
-    await fetch(`${SB_URL}/rest/v1/warnings`, {
+    const res = await fetch(`${SB_URL}/rest/v1/warnings`, {
       method: 'POST',
-      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
+      headers: { ...sbHeaders, 'Prefer': 'return=representation' },
       body: JSON.stringify({
         warning_code: wid,
-        employee_id:  emp?._uuid || null,
+        employee_id:  empUUID,
         issue:        issue,
         impact:       `ใบเตือนครั้งที่ ${cnt}`,
         status:       'active'
       })
     });
-  } catch(e) { console.warn('insert warning error:', e.message); }
-
-  DB.warnings.unshift({id:wid,_uuid:wid,emp_id:empId,emp_name:emp?.name||empId,date:today,issue,impact:`ใบเตือนครั้งที่ ${cnt}`,status:'active'});
-  document.getElementById('w-issue').value='';document.getElementById('w-cnt').value='1';
-  renderWarnHist();renderCredits();
-  showToast(`⚠ ออกใบเตือน ${wid} ให้ ${emp?.name} แล้ว`,'amber');
+    if (!res.ok) {
+      const err = await res.json().catch(()=>({}));
+      console.error('insert warning failed:', err);
+      showToast(`❌ บันทึกไม่สำเร็จ: ${err.message || res.status}`, 'red');
+      return;
+    }
+    const inserted = await res.json();
+    const newUUID = inserted?.[0]?.id || wid;
+    DB.warnings.unshift({id:wid, _uuid:newUUID, emp_id:empId, emp_name:emp?.name||empId, date:today, issue, impact:`ใบเตือนครั้งที่ ${cnt}`, status:'active'});
+    document.getElementById('w-issue').value=''; document.getElementById('w-cnt').value='1';
+    renderWarnHist(); renderCredits();
+    showToast(`⚠ ออกใบเตือน ${wid} ให้ ${emp?.name} แล้ว`,'amber');
+  } catch(e) {
+    console.error('insert warning error:', e.message);
+    showToast('❌ เกิดข้อผิดพลาดในการบันทึก', 'red');
+  }
 }
 function renderWarnHist(){
   const el=document.getElementById('w-hist');
