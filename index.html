@@ -1956,7 +1956,7 @@ function initDashboard() {
   document.getElementById('d-id').textContent   = u.id;
 
   const myReports  = DB.reports.filter(r => r.emp_id === u.id);
-  const activeWarn = DB.warnings.filter(w => w.status === 'active');
+  const activeWarn = DB.warnings.filter(w => w.emp_id === u.id && w.status === 'active');
 
   animNum('d-ring-num', 0, APP.credits, 800);
   animNum('d-reports',  0, myReports.length, 600);
@@ -1985,12 +1985,24 @@ function initDashboard() {
       <button class="btn-manage" onclick="navTo('credits')">จัดการ</button>
     </div>`).join('');
 
-  // Chart
-  const months = [
-    {mo:'ม.ค.',n:1},{mo:'ก.พ.',n:0},{mo:'มี.ค.',n:1},{mo:'เม.ย.',n:1},{mo:'พ.ค.',n:0},{mo:'มิ.ย.',n:1},{mo:'ก.ค.',n:1}
-  ];
-  const maxN = Math.max(...months.map(m=>m.n), 1);
-  document.getElementById('d-chart').innerHTML = months.map(m => {
+  // Chart — คำนวณจาก reports จริงของ user 7 เดือนล่าสุด
+  const moNames = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const nowRef = new Date();
+  const chartMonths = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(nowRef.getFullYear(), nowRef.getMonth() - i, 1);
+    chartMonths.push({ moIdx: d.getMonth(), year: d.getFullYear(), mo: moNames[d.getMonth()], n: 0 });
+  }
+  myReports.forEach(r => {
+    if (!r.date) return;
+    const m2 = r.date.match(/^(\d{4})-(\d{2})/);
+    if (!m2) return;
+    const rYearCE = parseInt(m2[1]) - 543;
+    const rMo     = parseInt(m2[2]) - 1;
+    chartMonths.forEach(cm => { if (cm.moIdx === rMo && cm.year === rYearCE) cm.n++; });
+  });
+  const maxN = Math.max(...chartMonths.map(m=>m.n), 1);
+  document.getElementById('d-chart').innerHTML = chartMonths.map(m => {
     const h = (m.n/maxN*100);
     const col = m.n >= 2 ? 'var(--green)' : m.n === 1 ? 'var(--greendk)' : 'var(--border)';
     return `<div class="chart-col">
@@ -2758,7 +2770,8 @@ async function rSubmit() {
       amount:    0,
       pending:   true,
       report_id: newReport.id,
-      potential: credits
+      potential: credits,
+      emp_id:    APP.loggedUser?.id
     });
   }
 
@@ -2852,34 +2865,60 @@ function cRenderWarnings() {
 }
 
 function cRenderTransactions() {
-  // รวม reports ที่ verified/rejected ของ user คนนี้
-  const myReports = DB.reports.filter(r =>
-    r.emp_id === APP.loggedUser?.id && r.status !== 'pending'
-  );
+  const uid = APP.loggedUser?.id;
 
-  const reportMap = {};
-  myReports.forEach(r => { reportMap[r.id] = r; });
+  // สร้าง transactions จาก reports จริงของ user
+  const myReports = DB.reports.filter(r => r.emp_id === uid && r.status !== 'pending');
 
-  const txHTML = DB.transactions.map(tx => {
-    const relReport = myReports.find(r =>
-      tx.desc && (tx.desc.includes(r.id) || (r.text && tx.desc.includes(r.text.slice(0,20))))
-    );
+  // transactions จาก reports ที่ verified (ได้ credits)
+  const earnTx = myReports
+    .filter(r => r.status === 'verified' && r.credits > 0)
+    .map(r => ({
+      date: r.verified_date || r.date,
+      desc: `รายงาน ${r.id}: ${r.text?.slice(0,30) || ''}...`,
+      type: r.risk === 'High' ? 'High Risk' : r.risk === 'Medium' ? 'Medium Risk' : 'Low Risk',
+      amount: r.credits,
+      verified_by: r.verified_by,
+      report_id: r.id
+    }));
 
+  // transactions จากการ redeem ใบเตือนของ user
+  const redeemTx = DB.warnings
+    .filter(w => w.emp_id === uid && w.status === 'redeemed')
+    .map(w => ({
+      date: w.redeemed_date || w.date,
+      desc: `แลกล้างใบเตือน ${w.id}`,
+      type: 'Redeem',
+      amount: -CFG.REDEEM_COST
+    }));
+
+  // pending transactions จาก DB.transactions (ของ user นี้)
+  const pendingTx = DB.transactions.filter(tx => tx.pending && tx.emp_id === uid);
+
+  // รวมและเรียงตามวันที่ล่าสุด
+  const allTx = [...pendingTx, ...earnTx, ...redeemTx].sort((a, b) => {
+    return (b.date || '').localeCompare(a.date || '');
+  });
+
+  if (!allTx.length) {
+    document.getElementById('c-tx-list').innerHTML =
+      '<div style="text-align:center;color:var(--muted);padding:24px;font-size:13px;">ยังไม่มีประวัติ Credits</div>';
+    return;
+  }
+
+  const txHTML = allTx.map(tx => {
     let trustBadge = '';
     if (tx.pending) {
       trustBadge = `<span style="font-size:10px;color:var(--amber);">⏳ รอ จป. ยืนยัน — จะได้รับ +${tx.potential} Credits</span>`;
-    } else if (tx.amount > 0 && relReport) {
-      trustBadge = `<span style="font-size:10px;color:var(--green);">✅ ยืนยันโดย ${relReport.verified_by||'จป.'}</span>`;
+    } else if (tx.amount > 0 && tx.verified_by) {
+      trustBadge = `<span style="font-size:10px;color:var(--green);">✅ ยืนยันโดย ${tx.verified_by}</span>`;
     } else if (tx.amount < 0) {
       trustBadge = `<span style="font-size:10px;color:var(--muted);">🔄 แลก Credits</span>`;
     }
 
-    // pending: แสดงตัวเลข potential แบบ muted, confirmed: แสดงสีปกติ
-    const amtClass  = tx.pending ? '' : (tx.amount > 0 ? 'tx-plus' : 'tx-minus');
-    const amtStyle  = tx.pending ? 'color:var(--amber);font-size:14px;' : '';
-    const amtText   = tx.pending
-      ? `+${tx.potential}?`
-      : (tx.amount > 0 ? `+${tx.amount}` : `${tx.amount}`);
+    const amtClass = tx.pending ? '' : (tx.amount > 0 ? 'tx-plus' : 'tx-minus');
+    const amtStyle = tx.pending ? 'color:var(--amber);font-size:14px;' : '';
+    const amtText  = tx.pending ? `+${tx.potential}?` : (tx.amount > 0 ? `+${tx.amount}` : `${tx.amount}`);
 
     return `<div class="tx-item" style="${tx.pending?'opacity:0.75;':''}">
       <div style="flex:1;">
@@ -2891,9 +2930,8 @@ function cRenderTransactions() {
     </div>`;
   }).join('');
 
-  // เพิ่ม rejected reports (ไม่ได้ credits)
-  const rejectedReports = myReports.filter(r => r.status === 'rejected');
-  const rejectedHTML = rejectedReports.map(r => `
+  // รายงานที่ไม่ผ่าน
+  const rejectedHTML = myReports.filter(r => r.status === 'rejected').map(r => `
     <div class="tx-item" style="opacity:.7;">
       <div style="flex:1;">
         <div class="tx-desc" style="color:var(--red);">${r.text?.slice(0,40)}...</div>
