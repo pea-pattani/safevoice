@@ -647,40 +647,50 @@ document.addEventListener('DOMContentLoaded', async () => {
   showToast('✅ โหลดข้อมูลสำเร็จ');
 });
 
-// ══ loadReports: pea-health pattern ══
-// 1) ดึงจาก Supabase จริง (join employees เพื่อได้ emp_code + full_name)
-// 2) ถ้าว่าง หรือ error → ใช้ DEMO_REPORTS (2 พนักงานตัวอย่าง)
+// ══ loadReports: ดึง near_miss_reports อย่างเดียว (ไม่ join)
+// แล้ว resolve ชื่อพนักงานจาก DB.employees ใน memory
 async function loadReports() {
   try {
-    const rows = await sbGet('near_miss_reports', 'select=*,employees(full_name,emp_code)');
+    const rows = await sbGet('near_miss_reports', 'select=*');
     if (rows && rows.length > 0) {
       // ✅ มีข้อมูลจริงจาก Supabase
-      DB.reports = rows.map(r => ({
-        id:            r.report_code || `NM-${r.id.slice(0,8)}`,
-        _uuid:         r.id,
-        date:          r.created_at ? r.created_at.split('T')[0] : '',
-        // ใช้ emp_code เป็น key หลัก (ตรงกับ loginWithDemo ใน index.html)
-        emp_id:        r.is_anonymous ? null : (r.employees?.emp_code || r.employee_id),
-        emp_name:      r.is_anonymous ? 'นิรนาม' : (r.employees?.full_name || '—'),
-        text:          r.report_text,
-        risk:          r.risk_level,
-        category:      r.category,
-        credits:       r.credits_given || 0,
-        status:        r.status,
-        is_anon:       r.is_anonymous,
-        photos:        r.photo_count || 0,
-        verified_by:   r.verified_by   || null,
-        verified_date: r.verified_at   ? r.verified_at.split('T')[0] : null,
-        reject_reason: r.reject_reason || null,
-      }));
+      DB.reports = rows.map(r => {
+        // หาชื่อพนักงานจาก DB.employees (emp_id อาจเป็น UUID หรือ emp_code)
+        const emp = DB.employees.find(e =>
+          e.id === r.employee_id ||
+          e._uuid === r.employee_id
+        );
+        return {
+          id:            r.report_code || `NM-${r.id.slice(0,8)}`,
+          _uuid:         r.id,
+          date:          r.created_at ? r.created_at.split('T')[0] : '',
+          emp_id:        r.employee_id || null,
+          emp_name:      r.is_anonymous ? 'นิรนาม' : (emp?.name || '—'),
+          text:          r.report_text,
+          risk:          r.risk_level,
+          category:      r.category,
+          credits:       r.credits_given || 0,
+          status:        r.status,
+          is_anon:       r.is_anonymous,
+          photos:        r.photo_count  || 0,
+          verified_by:   r.verified_by  || null,
+          verified_date: r.verified_at  ? r.verified_at.split('T')[0] : null,
+          reject_reason: r.reject_reason|| null,
+        };
+      });
+      // sync UUID ของ employees จาก reports (เพื่อให้ doVer หาเจอ)
+      DB.reports.forEach(r => {
+        if (!r.emp_id || r.is_anon) return;
+        const e = DB.employees.find(emp => emp.id === r.emp_id);
+        if (e) e._uuid = r.emp_id; // เก็บ UUID จริงไว้ใช้ตอน patch credits
+      });
       console.log(`✅ โหลด ${DB.reports.length} รายงานจาก Supabase`);
     } else {
-      // ⚠ Supabase ว่าง → ใช้ DEMO_REPORTS (2 พนักงานตัวอย่าง)
+      // Supabase ว่าง → ใช้ DEMO_REPORTS
       DB.reports = [...DEMO_REPORTS];
-      console.log('ℹ️ ใช้ Demo data (Supabase ยังไม่มีรายงาน)');
+      console.log('ℹ️ ใช้ Demo data');
     }
   } catch(e) {
-    // Network error → ใช้ demo
     DB.reports = [...DEMO_REPORTS];
     console.warn('loadReports error, using demo:', e.message);
   }
@@ -808,18 +818,18 @@ async function doVer(id){
     return;
   }
 
-  // Supabase จริง — patch โดยตรง ไม่ต้องพึ่ง RPC
+  // Supabase จริง — patch โดยตรง
   const ok = await sbPatch('near_miss_reports', r._uuid, {
     status:      'verified',
     verified_at: today,
-    // verified_by เป็น uuid — ส่ง null ไปก่อน (ยังไม่มี officer login system)
     verified_by: null
   });
   if(!ok){ showToast('❌ บันทึกไม่สำเร็จ — ตรวจ console','red'); return; }
 
   r.status='verified'; r.verified_date=today.split('T')[0]; r.verified_by='จป.';
-  const e=DB.employees.find(x=>x.id===r.emp_id);
-  if(e&&!r.is_anon) e.credits += r.credits;
+  // หา employee จาก UUID ที่ได้จาก Supabase
+  const e = DB.employees.find(x => x._uuid === r.emp_id || x.id === r.emp_id);
+  if(e && !r.is_anon) e.credits += r.credits;
   renderVerify(); renderDash(); renderCredits(); updateBadge();
   showToast(`✅ ยืนยัน ${id} — +${r.credits} Credits`);
 }
