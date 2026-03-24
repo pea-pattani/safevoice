@@ -642,9 +642,9 @@ async function sbPatch(table, uuid, data) {
 // ══ INIT ══
 document.addEventListener('DOMContentLoaded', async () => {
   showToast('⌛ กำลังโหลดข้อมูล...', 'amber');
-  // โหลด employees จาก Supabase ก่อน → ได้ UUID จริง → ใช้ map ชื่อใน loadReports
   await loadEmployees();
   await loadReports();
+  await loadWarnings();
   renderDash(); renderVerify(); renderCredits(); renderWarnHist(); renderUsers(); fillEmpDD(); updateBadge(); anRenderAll();
   showToast('✅ โหลดข้อมูลสำเร็จ');
 });
@@ -841,16 +841,34 @@ async function doVer(id){
   });
   if(!ok){ showToast('❌ บันทึกไม่สำเร็จ','red'); return; }
 
-  // 2) บวก credits ให้พนักงานใน Supabase (ถ้าไม่ใช่นิรนาม)
+  // 2) บวก credits ให้พนักงานใน Supabase + บันทึก credit_transactions
   if(!r.is_anon && r.credits > 0) {
     const emp = DB.employees.find(x => x.id === r.emp_id);
     console.log('doVer emp found:', emp, 'r.emp_id:', r.emp_id);
     console.log('emp._uuid:', emp?._uuid, 'newCredits:', (emp?.credits||0) + r.credits);
     if(emp && emp._uuid) {
       const newCredits = (emp.credits || 0) + r.credits;
+      // patch employees.credits
       const patchOk = await sbPatch('employees', emp._uuid, { credits: newCredits });
       console.log('patch employees result:', patchOk);
       if(patchOk) emp.credits = newCredits;
+
+      // insert credit_transactions
+      try {
+        await fetch(`${SB_URL}/rest/v1/credit_transactions`, {
+          method: 'POST',
+          headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
+          body: JSON.stringify({
+            employee_id:   emp._uuid,
+            type:          'earn',
+            amount:        r.credits,
+            balance_after: newCredits,
+            description:   `ยืนยันรายงาน ${r.id} — ${r.risk} Risk`,
+            report_id:     r._uuid
+          })
+        });
+        console.log('credit_transactions inserted ✅');
+      } catch(e) { console.warn('insert credit_transactions error:', e.message); }
     } else {
       console.warn('emp._uuid missing — cannot patch credits. emp:', emp);
     }
@@ -917,7 +935,30 @@ function fillEmpDD(){
   const s=document.getElementById('w-emp');if(!s)return;
   s.innerHTML='<option value="">-- เลือกพนักงาน --</option>'+DB.employees.filter(e=>e.role==='employee').map(e=>`<option value="${e.id}">${e.name} (${e.id})</option>`).join('');
 }
-function submitWarning(){
+// ══ โหลด warnings จาก Supabase ══
+async function loadWarnings() {
+  try {
+    const rows = await sbGet('warnings', 'select=*');
+    if (rows && rows.length > 0) {
+      DB.warnings = rows.map(r => {
+        const emp = DB.employees.find(e => e._uuid === r.employee_id);
+        return {
+          id:       r.warning_code || r.id,
+          _uuid:    r.id,
+          emp_id:   emp?.id || r.employee_id,
+          emp_name: emp?.name || '—',
+          date:     r.created_at ? r.created_at.split('T')[0] : '',
+          issue:    r.issue,
+          impact:   r.impact || '—',
+          status:   r.status || 'active',
+          redeemed_date: r.redeemed_at ? r.redeemed_at.split('T')[0] : null,
+        };
+      });
+      console.log(`✅ โหลด ${DB.warnings.length} ใบเตือนจาก Supabase`);
+    }
+  } catch(e) { console.warn('loadWarnings error:', e.message); }
+}
+async function submitWarning(){
   const empId=document.getElementById('w-emp').value;
   const issue=document.getElementById('w-issue').value.trim();
   const cnt=parseInt(document.getElementById('w-cnt').value)||1;
@@ -926,7 +967,23 @@ function submitWarning(){
   const emp=DB.employees.find(e=>e.id===empId);
   const today=new Date().toISOString().split('T')[0];
   const wid='W-'+today.replace(/-/g,'')+'-'+String(DB.warnings.length+1).padStart(4,'0');
-  DB.warnings.unshift({id:wid,emp_id:empId,emp_name:emp?.name||empId,date:today,issue,impact:`ใบเตือนครั้งที่ ${cnt}`,status:'active'});
+
+  // บันทึกลง Supabase — ตรง schema: warning_code, employee_id, issue, impact, status
+  try {
+    await fetch(`${SB_URL}/rest/v1/warnings`, {
+      method: 'POST',
+      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        warning_code: wid,
+        employee_id:  emp?._uuid || null,
+        issue:        issue,
+        impact:       `ใบเตือนครั้งที่ ${cnt}`,
+        status:       'active'
+      })
+    });
+  } catch(e) { console.warn('insert warning error:', e.message); }
+
+  DB.warnings.unshift({id:wid,_uuid:wid,emp_id:empId,emp_name:emp?.name||empId,date:today,issue,impact:`ใบเตือนครั้งที่ ${cnt}`,status:'active'});
   document.getElementById('w-issue').value='';document.getElementById('w-cnt').value='1';
   renderWarnHist();renderCredits();
   showToast(`⚠ ออกใบเตือน ${wid} ให้ ${emp?.name} แล้ว`,'amber');
