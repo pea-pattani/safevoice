@@ -1458,7 +1458,6 @@ function loginWithMock(id, pw) {
 function afterLogin(role) {
   showToast(`✅ ยินดีต้อนรับ ${APP.loggedUser.name}`);
   if (['safety_officer','manager'].includes(role)) {
-    // บันทึกชื่อไว้ใช้ใน admin.html
     try {
       const sess = JSON.parse(sessionStorage.getItem('sv_session')||'{}');
       sess.user_name = APP.loggedUser.name;
@@ -1466,8 +1465,47 @@ function afterLogin(role) {
     } catch {}
     location.href = 'admin.html';
   } else {
-    navTo('dashboard');
+    // โหลด reports จาก Supabase ก่อนแสดง dashboard
+    loadMyReportsFromSB().then(() => navTo('dashboard'));
   }
+}
+
+async function loadMyReportsFromSB() {
+  if (CFG.SUPABASE_URL === 'YOUR_SUPABASE_URL') return;
+  try {
+    // รอให้ UUID พร้อมก่อน (Mock login ดึง UUID async)
+    await new Promise(r => setTimeout(r, 600));
+    const uid = APP.loggedUser?.id;
+    if (!uid) return;
+    const rows = await SB.select('near_miss_reports',
+      `employee_id=eq.${uid}&select=*&order=created_at.desc`,
+      CFG.SUPABASE_KEY
+    );
+    if (rows && rows.length > 0) {
+      // map field ให้ตรงกับ local DB format
+      const mapped = rows.map(r => ({
+        id:            r.report_code || r.id,
+        _uuid:         r.id,
+        date:          r.created_at ? r.created_at.split('T')[0] : '',
+        emp_id:        uid,
+        emp_name:      APP.loggedUser.name,
+        text:          r.report_text,
+        risk:          r.risk_level,
+        category:      r.category,
+        credits:       r.credits_given || 0,
+        summary:       r.ai_summary,
+        action:        r.ai_action,
+        status:        r.status,
+        photos:        r.photo_count || 0,
+        is_anon:       r.is_anonymous,
+        verified_date: r.verified_at ? r.verified_at.split('T')[0] : null,
+        reject_reason: r.reject_reason || null,
+      }));
+      // ผสานกับ DB.reports (ลบของเก่าของ user นี้ออกก่อน)
+      DB.reports = DB.reports.filter(r => r.emp_id !== uid);
+      DB.reports = [...mapped, ...DB.reports];
+    }
+  } catch(e) { console.warn('loadMyReports error', e); }
 }
 
 // ── Logout ──
@@ -1515,10 +1553,11 @@ function initDashboard() {
   const u = APP.loggedUser; if (!u) return;
   document.getElementById('d-name').textContent = u.name;
   document.getElementById('d-dept').textContent = u.dept;
-  document.getElementById('d-id').textContent   = u.id;
+  document.getElementById('d-id').textContent   = u.emp_code || u.id;
 
-  const myReports  = DB.reports.filter(r => r.emp_id === u.id);
-  const activeWarn = DB.warnings.filter(w => w.emp_id === u.id && w.status === 'active');
+  const myReports  = DB.reports.filter(r => r.emp_id === u.id || r.emp_id === u.emp_code);
+  const activeWarn = DB.warnings.filter(w => w.emp_id === u.id || w.emp_id === u.emp_code)
+                                  .filter(w => w.status === 'active');
 
   animNum('d-ring-num', 0, APP.credits, 800);
   animNum('d-reports',  0, myReports.length, 600);
@@ -1652,7 +1691,7 @@ function renderDashHistory(reports) {
 
 function toggleDashHistory() {
   APP.dShowAll = !APP.dShowAll;
-  renderDashHistory(DB.reports.filter(r => r.emp_id === APP.loggedUser?.id));
+  renderDashHistory(DB.reports.filter(r => r.emp_id === APP.loggedUser?.id || r.emp_id === APP.loggedUser?.emp_code));
 }
 
 // ═══════════════════════════════════════════════
