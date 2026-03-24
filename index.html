@@ -1577,9 +1577,9 @@ async function refreshCreditsFromSB() {
       APP.loggedUser.credits   = rows[0].credits       || 0;
       APP.loggedUser.redeems   = rows[0].total_redeems || 0;
     }
-    // sync warnings ด้วยทุกครั้ง
-    await loadMyWarningsFromSB();
   } catch(e) { console.warn('refreshCredits error:', e.message); }
+  // โหลด warnings แยกต่างหาก ไม่ให้ error ของ credits กระทบ
+  await loadMyWarningsFromSB();
 }
 
 function initDashboard() {
