@@ -970,7 +970,8 @@ async function submitWarning(){
 
   const emp=DB.employees.find(e=>e.id===empId);
   const today=new Date().toISOString().split('T')[0];
-  const wid='W-'+today.replace(/-/g,'')+'-'+String(DB.warnings.length+1).padStart(4,'0');
+  // ใช้ timestamp + random แทน DB.warnings.length เพื่อไม่ให้ซ้ำกับ Supabase
+  const wid='W-'+today.replace(/-/g,'')+'-'+Date.now().toString(36).toUpperCase().slice(-4)+Math.random().toString(36).slice(2,4).toUpperCase();
 
   // ── resolve UUID จาก Supabase ถ้า _uuid ยังไม่มี ──
   let empUUID = emp?._uuid || null;
