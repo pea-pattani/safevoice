@@ -1525,7 +1525,6 @@ async function loadMyWarningsFromSB() {
         date:          r.created_at ? r.created_at.split('T')[0] : '',
         issue:         r.issue,
         impact:        r.impact || '—',
-        issued_by:     r.issued_by || null,
         status:        r.status || 'active',
         redeemed_date: r.redeemed_at ? r.redeemed_at.split('T')[0] : null,
       }));
@@ -2484,7 +2483,7 @@ function initCredits() {
 
 function cRenderWarnings() {
   const list = document.getElementById('c-warnings-list');
-  const myWarnings = DB.warnings.filter(w => w.emp_id === APP.loggedUser?.id || w.emp_id === APP.loggedUser?.emp_code);
+  const myWarnings = DB.warnings.filter(w => w.emp_id === APP.loggedUser?.id);
   if (!myWarnings.length) { list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px;font-size:13px;">🎉 ไม่มีใบเตือนที่มีผล</div>'; return; }
 
   list.innerHTML = myWarnings.map(w => {
