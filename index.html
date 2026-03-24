@@ -934,8 +934,8 @@ body {
 const CFG = {
   CLAUDE_KEY:      'YOUR_CLAUDE_API_KEY',    // ← Claude API key
   OPENAI_KEY:      'YOUR_OPENAI_API_KEY',    // ← OpenAI key สำหรับ Whisper STT
-  SUPABASE_URL:    'YOUR_SUPABASE_URL',      // ← https://xxxx.supabase.co
-  SUPABASE_KEY:    'YOUR_SUPABASE_ANON_KEY', // ← anon/public key
+  SUPABASE_URL:    'https://kgcnuelqgawslfcfzdcd.supabase.co',
+  SUPABASE_KEY:    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtnY251ZWxxZ2F3c2xmY2Z6ZGNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNDg1NzgsImV4cCI6MjA4OTgyNDU3OH0.xlVn5RYNgfHf87tUYyMyMJWIGvLCD085y1g3EMEAf-Q',
   STORAGE_BUCKET:  'near-miss-photos',       // ← Supabase Storage bucket name
   REDEEM_COST:     300
 };
@@ -1172,14 +1172,16 @@ async function doLogin() {
 
   try {
     if (CFG.SUPABASE_URL === 'YOUR_SUPABASE_URL') {
-      throw new Error('demo_mode'); // ใช้ Mock แทน
+      throw new Error('demo_mode');
     }
     await loginWithSupabase(emailOrCode, pw);
   } catch (err) {
-    if (err.message === 'demo_mode' || err.message.includes('fetch')) {
-      loginWithMock(emailOrCode, pw); // Fallback
+    if (err.message === 'demo_mode') {
+      loginWithMock(emailOrCode, pw); // Fallback เฉพาะ demo mode เท่านั้น
     } else {
-      showToast('เข้าสู่ระบบไม่สำเร็จ: ' + err.message, 'red');
+      // แสดง error จริง ไม่ fallback Mock
+      showToast('เข้าสู่ระบบไม่สำเร็จ: ' + (err.message || 'กรุณาลองใหม่'), 'red');
+      console.error('Login error:', err);
     }
   } finally {
     btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ';
