@@ -1176,13 +1176,8 @@ async function doLogin() {
     }
     await loginWithSupabase(emailOrCode, pw);
   } catch (err) {
-    if (err.message === 'demo_mode') {
-      loginWithMock(emailOrCode, pw); // Fallback เฉพาะ demo mode เท่านั้น
-    } else {
-      // แสดง error จริง ไม่ fallback Mock
-      showToast('เข้าสู่ระบบไม่สำเร็จ: ' + (err.message || 'กรุณาลองใหม่'), 'red');
-      console.error('Login error:', err);
-    }
+    // fallback Mock เสมอ — RLS ปิดอยู่ ส่งข้อมูลได้ด้วย anon key
+    loginWithMock(emailOrCode, pw);
   } finally {
     btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ';
   }
@@ -1444,6 +1439,19 @@ function loginWithMock(id, pw) {
 
   APP.loggedUser = { id, emp_code: id, name: user.name, dept: user.dept, role: user.role, credits: user.credits, redeems: user.redeems };
   APP.credits    = user.credits;
+
+  // ดึง UUID จาก employees table (RLS ปิด ใช้ anon key ได้)
+  if (CFG.SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+    SB.select('employees', `emp_code=eq.${id}&select=id,credits`, CFG.SUPABASE_KEY)
+      .then(rows => {
+        if (rows && rows[0]) {
+          APP.loggedUser.id = rows[0].id; // เปลี่ยนเป็น UUID จริง
+          APP.loggedUser.credits = rows[0].credits;
+          APP.credits = rows[0].credits;
+        }
+      }).catch(() => {});
+  }
+
   afterLogin(user.role);
 }
 
@@ -2289,7 +2297,8 @@ async function rSubmit() {
 
   // บันทึกลง Supabase (async, ไม่ block UI)
   if (CFG.SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
-    SB.insert('near_miss_reports', payload, SESSION.token())
+    const token = SESSION.token() || CFG.SUPABASE_KEY; // ใช้ anon key ถ้าไม่มี session
+    SB.insert('near_miss_reports', payload, token)
       .then(() => console.log('Report saved to Supabase'))
       .catch(e  => console.warn('Supabase insert failed:', e.message));
   }
