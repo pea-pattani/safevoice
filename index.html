@@ -2309,11 +2309,14 @@ async function rSubmit() {
     ]);
   }
 
+  // ── payload ตรงกับ schema near_miss_reports 100% ──
+  // columns: id, report_code, employee_id(uuid), is_anonymous, report_text,
+  //          risk_level, category, ai_summary, ai_action, ai_heinrich,
+  //          credits_given, photo_count, location_note, status,
+  //          verified_by, verified_at, reject_reason, created_at, updated_at
+  const isRealUUID = APP.loggedUser?.id && APP.loggedUser.id !== APP.loggedUser.emp_code;
   const payload = {
-    // pea-health pattern: ถ้า login ผ่าน Supabase → id = UUID จริง ✅
-    // ถ้า demo mode → id = emp_code (string) → employee_id = null ป้องกัน error
-    employee_id:   APP.rIsAnon ? null : (APP.loggedUser?.id === APP.loggedUser?.emp_code ? null : APP.loggedUser?.id),
-    emp_code:      APP.rIsAnon ? null : APP.loggedUser?.emp_code,
+    employee_id:   APP.rIsAnon ? null : (isRealUUID ? APP.loggedUser.id : null),
     is_anonymous:  APP.rIsAnon,
     report_text:   input,
     risk_level:    APP.rAiResult.risk_level,
@@ -2323,8 +2326,9 @@ async function rSubmit() {
     ai_heinrich:   APP.rAiResult.heinrich_note,
     credits_given: credits,
     photo_count:   APP.rPhotos.length,
-    photo_urls:    photoUrls.length ? photoUrls : null,
     status:        'pending'
+    // ❌ ไม่ส่ง emp_code  — ไม่มีใน schema
+    // ❌ ไม่ส่ง photo_urls — ไม่มีใน schema
   };
 
   // บันทึกลง Supabase (async, ไม่ block UI)
