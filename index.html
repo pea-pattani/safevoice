@@ -1160,69 +1160,76 @@ function fillDemo(role) {
   document.getElementById('loginPw').value = '1234';
 }
 
-// ── doLogin: ลอง Supabase จริงก่อน fallback Mock ──
-async function doLogin() {
-  const emailOrCode = document.getElementById('loginId').value.trim();
-  const pw          = document.getElementById('loginPw').value.trim();
+// ══════════════════════════════════════════════════════════════════
+//  LOGIN — ใช้ pea-health pattern:
+//  query employees table โดยตรงด้วย anon key → ได้ UUID พร้อมใช้ทันที
+//  ไม่ต้องพึ่ง Supabase Auth เลย
+// ══════════════════════════════════════════════════════════════════
 
-  if (!emailOrCode || !pw) { showToast('กรุณากรอกรหัสพนักงานและรหัสผ่าน', 'amber'); return; }
+// ── ตัวอย่างพนักงาน 2 คน สำหรับสาธิต (password_hash = '1234') ──
+// พนักงาน 1: นางนฤมล เจริญพานิช (รหัส 278629) — employee ที่มีประวัติรายงานและใบเตือน
+// พนักงาน 2: นายสาโรจน์ แนวบรรทัด (รหัส 303644) — employee ใหม่ที่เพิ่งส่งรายงาน
+// Admin:     นายอนัน รัตนวรรณ (รหัส 416146) — safety_officer
+
+async function doLogin() {
+  const empCode = document.getElementById('loginId').value.trim().replace(/@.*/, ''); // รองรับทั้ง 278629 และ 278629@pea-pattani.local
+  const pw      = document.getElementById('loginPw').value.trim();
+
+  if (!empCode || !pw) { showToast('กรุณากรอกรหัสพนักงานและรหัสผ่าน', 'amber'); return; }
 
   const btn = document.querySelector('#page-login .btn-primary');
   btn.disabled = true; btn.textContent = '⌛ กำลังเข้าสู่ระบบ...';
 
   try {
-    if (CFG.SUPABASE_URL === 'YOUR_SUPABASE_URL') {
-      throw new Error('demo_mode');
+    // ── ลอง Supabase จริงก่อน (pea-health pattern: query employees โดยตรง) ──
+    if (CFG.SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+      const rows = await SB.select('employees', `emp_code=eq.${empCode}&select=*`, CFG.SUPABASE_KEY);
+      if (rows && rows.length > 0) {
+        const emp = rows[0];
+        // ตรวจ password_hash ใน JS (เหมือน pea-health)
+        if (emp.password_hash !== pw) {
+          showToast('รหัสผ่านไม่ถูกต้อง', 'red');
+          btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ';
+          return;
+        }
+        // ✅ ได้ UUID จริงทันที — ไม่มีปัญหา insert
+        APP.loggedUser = {
+          id:       emp.id,          // UUID จริงจาก Supabase ✅
+          emp_code: emp.emp_code,
+          name:     emp.full_name,
+          dept:     emp.department,
+          credits:  emp.credits      || 0,
+          redeems:  emp.total_redeems|| 0,
+          role:     emp.role
+        };
+        APP.credits = emp.credits || 0;
+        await loadMyReportsFromSB();
+        afterLogin(emp.role);
+        btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ';
+        return;
+      }
+      // ไม่พบ emp_code ใน Supabase → fallback Demo
     }
-    await loginWithSupabase(emailOrCode, pw);
+    // ── Fallback: Demo data (ใช้เมื่อ Supabase ยังไม่มีข้อมูล หรือ URL ยังไม่ตั้งค่า) ──
+    loginWithDemo(empCode, pw);
   } catch (err) {
-    // fallback Mock เสมอ — RLS ปิดอยู่ ส่งข้อมูลได้ด้วย anon key
-    loginWithMock(emailOrCode, pw);
+    console.warn('Supabase login error, falling back to demo:', err.message);
+    loginWithDemo(empCode, pw);
   } finally {
     btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ';
   }
 }
 
-async function loginWithSupabase(emailOrCode, password) {
-  // รองรับทั้ง email จริง และ emp_code (แปลงเป็น email อัตโนมัติ)
-  const email = emailOrCode.includes('@')
-    ? emailOrCode
-    : `${emailOrCode.toLowerCase()}@pea-pattani.local`;
-
-  const authData = await SB.signIn(email, password);
-  SESSION.save(authData);
-
-  // ดึงข้อมูล employee profile
-  const rows = await SB.select(
-    'employees',
-    `auth_id=eq.${authData.user.id}&select=*`,
-    authData.access_token
-  );
-  if (!rows.length) throw new Error('ไม่พบข้อมูลพนักงานในระบบ');
-
-  const emp = rows[0];
-  APP.loggedUser = {
-    id:       emp.id,
-    emp_code: emp.emp_code,
-    name:     emp.full_name,
-    dept:     emp.department,
-    credits:  emp.credits,
-    redeems:  emp.total_redeems,
-    role:     emp.role
-  };
-  APP.credits = emp.credits;
-
-  // Role ถูกกำหนดจาก DB อัตโนมัติ — ไม่ต้องเลือกเอง
-
-  afterLogin(emp.role);
-}
-
-function loginWithMock(id, pw) {
-  const MOCK_USERS = {
+// ── Demo login (pea-health pattern): ใช้เมื่อ Supabase ยังไม่มีข้อมูล ──
+// emp_id ใน DB.reports ต้องตรงกับ key ที่นี่ เพื่อให้ dashboard แสดงประวัติถูกต้อง
+function loginWithDemo(id, pw) {
+  const DEMO_USERS = {
+    // ══ ตัวอย่างพนักงาน 2 คน สำหรับสาธิต ══
+    // พนักงาน 1: นางนฤมล มีประวัติรายงาน + ใบเตือน → ดู dashboard ได้ครบ
     '278629': {name:'นางนฤมล เจริญพานิช',dept:'กฟจ.ปัตตานี',role:'employee',credits:170,redeems:1},
-    '278629@pea-pattani.local': {name:'นางนฤมล เจริญพานิช',dept:'กฟจ.ปัตตานี',role:'employee',credits:170,redeems:1},
+    // พนักงาน 2: นายสาโรจน์ มีรายงาน 1 ชิ้น status:'pending' → เห็น flow รอตรวจ
     '303644': {name:'นายสาโรจน์ แนวบรรทัด',dept:'กฟจ.ปัตตานี',role:'employee',credits:50,redeems:0},
-    '303644@pea-pattani.local': {name:'นายสาโรจน์ แนวบรรทัด',dept:'กฟจ.ปัตตานี',role:'employee',credits:50,redeems:0},
+    // ══ Admin ══
     '416146': {name:'นายอนัน รัตนวรรณ',dept:'กฟจ.ปัตตานี',role:'safety_officer',credits:0,redeems:0},
     '416146@pea-pattani.local': {name:'นายอนัน รัตนวรรณ',dept:'กฟจ.ปัตตานี',role:'safety_officer',credits:0,redeems:0},
     '449602': {name:'นายสัญญา ชื่นบาน',dept:'กฟจ.ปัตตานี',role:'employee',credits:0,redeems:0},
@@ -1433,10 +1440,11 @@ function loginWithMock(id, pw) {
     '515665@pea-pattani.local': {name:'นายภูรีทัศน์ สุวรรณพรหม',dept:'กฟส.หนองจิก',role:'employee',credits:0,redeems:0}
   };
 
-  const user = MOCK_USERS[id];
+  const user = DEMO_USERS[id];
   if (!user) { showToast('ไม่พบรหัสพนักงานในระบบ', 'red'); return; }
   if (pw !== '1234') { showToast('รหัสผ่านไม่ถูกต้อง', 'red'); return; }
 
+  // Demo mode: id = emp_code (ใช้เป็น key ให้ตรงกับ DB.reports.emp_id)
   APP.loggedUser = { id, emp_code: id, name: user.name, dept: user.dept, role: user.role, credits: user.credits, redeems: user.redeems };
   APP.credits    = user.credits;
   afterLogin(user.role);
@@ -1452,38 +1460,32 @@ function afterLogin(role) {
     } catch {}
     location.href = 'admin.html';
   } else {
-    // โหลด reports จาก Supabase ก่อนแสดง dashboard
+    // โหลดรายงานจาก Supabase (ถ้ามี) แล้วค่อยแสดง dashboard
     loadMyReportsFromSB().then(() => navTo('dashboard'));
   }
 }
 
+// ── โหลดรายงานจาก Supabase ด้วย employee_id (UUID จริง) ──
+// pea-health pattern: เราได้ UUID แล้วตอน login → ใช้ได้ทันที ไม่ต้อง lookup อีก
 async function loadMyReportsFromSB() {
   if (CFG.SUPABASE_URL === 'YOUR_SUPABASE_URL') return;
+  const uid     = APP.loggedUser?.id;
+  const empCode = APP.loggedUser?.emp_code;
+  if (!uid) return;
+
+  // ถ้า uid === empCode แสดงว่ายังเป็น demo mode (ไม่มี UUID จริง)
+  // ไม่ต้อง query — ใช้ DB.reports ที่มี emp_id = empCode อยู่แล้ว
+  if (uid === empCode) return;
+
   try {
-    // ดึง UUID จาก employees ก่อน ถ้ายังไม่มี
-    const empCode = APP.loggedUser?.emp_code;
-    if (!empCode) return;
-
-    // ดึง employee UUID
-    const empRows = await SB.select('employees', `emp_code=eq.${empCode}&select=id,credits,total_redeems`, CFG.SUPABASE_KEY);
-    if (empRows && empRows[0]) {
-      APP.loggedUser.id = empRows[0].id;
-      APP.loggedUser.credits = empRows[0].credits;
-      APP.loggedUser.redeems = empRows[0].total_redeems;
-      APP.credits = empRows[0].credits;
-    }
-
-    const uid = APP.loggedUser.id;
-    if (!uid || uid === empCode) return; // ยังไม่ได้ UUID จริง
-
-    // ดึงรายงานของพนักงาน
+    // ✅ uid คือ UUID จริงจาก Supabase — query ได้ทันที
     const rows = await SB.select('near_miss_reports',
       `employee_id=eq.${uid}&select=*&order=created_at.desc`,
       CFG.SUPABASE_KEY
     );
     if (rows && rows.length > 0) {
       const mapped = rows.map(r => ({
-        id:            r.report_code || r.id,
+        id:            r.report_code || `NM-${r.id.slice(0,8)}`,
         _uuid:         r.id,
         date:          r.created_at ? r.created_at.split('T')[0] : '',
         emp_id:        uid,
@@ -1497,18 +1499,19 @@ async function loadMyReportsFromSB() {
         status:        r.status,
         photos:        r.photo_count || 0,
         is_anon:       r.is_anonymous,
-        verified_date: r.verified_at ? r.verified_at.split('T')[0] : null,
+        verified_by:   r.verified_by   || null,
+        verified_date: r.verified_at   ? r.verified_at.split('T')[0] : null,
         reject_reason: r.reject_reason || null,
       }));
+      // แทนที่รายการ demo ของ user นี้ด้วยข้อมูลจริงจาก Supabase
       DB.reports = DB.reports.filter(r => r.emp_id !== uid && r.emp_id !== empCode);
       DB.reports = [...mapped, ...DB.reports];
     }
-  } catch(e) { console.warn('loadMyReports error', e); }
+  } catch(e) { console.warn('loadMyReports error:', e.message); }
 }
 
 // ── Logout ──
-async function doLogout() {
-  try { if (SESSION.token()) await SB.signOut(SESSION.token()); } catch {}
+function doLogout() {
   SESSION.clear();
   APP.loggedUser = null; APP.credits = 0;
   navToLogin();
@@ -1527,21 +1530,10 @@ function navToLogin() {
   }, 0);
 }
 
-// ── Auto-restore session on load ──
-document.addEventListener('DOMContentLoaded', async () => {
-  const sess = SESSION.load();
-  if (!sess?.access_token || CFG.SUPABASE_URL === 'YOUR_SUPABASE_URL') return;
-  try {
-    // ลอง refresh token ก่อนใช้
-    const fresh = await SB.refresh(sess.refresh_token);
-    SESSION.save({ ...sess, ...fresh });
-    const rows = await SB.select('employees', `auth_id=eq.${fresh.user.id}&select=*`, fresh.access_token);
-    if (!rows.length) return;
-    const emp = rows[0];
-    APP.loggedUser = { id:emp.id, emp_code:emp.emp_code, name:emp.full_name, dept:emp.department, credits:emp.credits, redeems:emp.total_redeems, role:emp.role };
-    APP.credits = emp.credits;
-    afterLogin(emp.role);
-  } catch { SESSION.clear(); }
+// ── Auto-restore session: ไม่ใช้ Supabase Auth แล้ว — ล็อกอินใหม่ทุกครั้ง ──
+// (pea-health pattern: ไม่มี session persistence — ความปลอดภัยดีกว่า)
+document.addEventListener('DOMContentLoaded', () => {
+  SESSION.clear(); // ล้าง session เก่าที่อาจค้างอยู่
 });
 
 // ═══════════════════════════════════════════════
@@ -2318,7 +2310,10 @@ async function rSubmit() {
   }
 
   const payload = {
-    employee_id:   APP.rIsAnon ? null : APP.loggedUser?.id,
+    // pea-health pattern: ถ้า login ผ่าน Supabase → id = UUID จริง ✅
+    // ถ้า demo mode → id = emp_code (string) → employee_id = null ป้องกัน error
+    employee_id:   APP.rIsAnon ? null : (APP.loggedUser?.id === APP.loggedUser?.emp_code ? null : APP.loggedUser?.id),
+    emp_code:      APP.rIsAnon ? null : APP.loggedUser?.emp_code,
     is_anonymous:  APP.rIsAnon,
     report_text:   input,
     risk_level:    APP.rAiResult.risk_level,
@@ -2343,10 +2338,11 @@ async function rSubmit() {
   if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '✅ ส่งรายงาน'; }
 
   // อัปเดต local state — ยังไม่บวก credits (รอ admin verify)
+  // ใช้ emp_code เป็น key เสมอ → ตรงกับ DB.reports.emp_id ทั้ง demo และ Supabase mode
   const newReport = {
     id:        reportId,
     date:      new Date().toISOString().split('T')[0],
-    emp_id:    APP.rIsAnon ? null : APP.loggedUser?.id,
+    emp_id:    APP.rIsAnon ? null : APP.loggedUser?.emp_code,
     emp_name:  APP.rIsAnon ? 'นิรนาม' : APP.loggedUser?.name,
     text:      input,
     risk:      APP.rAiResult.risk_level,
