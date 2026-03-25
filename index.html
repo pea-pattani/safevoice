@@ -1809,10 +1809,20 @@ async function rStartRec() {
     APP.rSpeechInterim= '';
     APP.rSpeechRec    = null;
 
-    APP.rMediaRec = new MediaRecorder(stream);
+    // iOS Safari รองรับ audio/mp4 เท่านั้น — Android รองรับ audio/webm
+    const preferredTypes = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg'];
+    const mimeType = preferredTypes.find(t => {
+      try { return MediaRecorder.isTypeSupported(t); } catch(_){ return false; }
+    }) || '';
+    APP.rRecMimeType = mimeType;
+    try {
+      APP.rMediaRec = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    } catch(_) {
+      APP.rMediaRec = new MediaRecorder(stream); // fallback ไม่ระบุ type
+    }
     APP.rMediaRec.ondataavailable = e => { if (e.data.size > 0) APP.rBlobs.push(e.data); };
     APP.rMediaRec.onstop = () => { stream.getTracks().forEach(t => t.stop()); rProcessAudio(); };
-    APP.rMediaRec.start();
+    APP.rMediaRec.start(250); // timeslice 250ms — บังคับให้ data มาถี่ขึ้น ป้องกัน blob ว่าง
     APP.rRecording = true; APP.rElapsed = 0;
 
     // เริ่ม Web Speech live พร้อมกันเลย (fallback ฟรี)
@@ -1868,54 +1878,83 @@ function rStopRec() {
 
 // ── ติดตั้ง Web Speech live ระหว่าง rStartRec ──
 // เรียกจาก rStartRec() ก่อน MediaRecorder.start()
+// ── detect platform ──
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+               (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
 function rInitWebSpeechLive() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) return; // ไม่รองรับ — ใช้แค่ Whisper
+  if (!SR) { console.warn('Web Speech API ไม่รองรับบน browser นี้'); return; }
 
-  APP.rSpeechRec      = new SR();
-  APP.rSpeechFinal    = '';  // ข้อความที่ confirm แล้ว
-  APP.rSpeechInterim  = '';  // ข้อความระหว่างพูด
+  APP.rSpeechFinal      = '';
+  APP.rSpeechInterim    = '';
+  APP.rSpeechErrorCount = 0;
 
-  APP.rSpeechRec.lang             = 'th-TH';
-  APP.rSpeechRec.continuous       = true;   // ฟังต่อเนื่องตลอด 30 วิ
-  APP.rSpeechRec.interimResults   = true;   // แสดง interim ให้ user เห็น
-  APP.rSpeechRec.maxAlternatives  = 1;
+  function createRec() {
+    const rec = new SR();
+    rec.lang           = 'th-TH';
+    rec.interimResults = true;
+    rec.maxAlternatives = 1;
 
-  APP.rSpeechRec.onresult = (e) => {
-    let interim = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      const t = e.results[i][0].transcript;
-      if (e.results[i].isFinal) {
-        APP.rSpeechFinal += t;
-      } else {
-        interim += t;
+    // iOS Safari: continuous=true ทำงานได้ดีกว่า restart loop
+    // Android Chrome: continuous=false + restart ทำงานได้เสถียรกว่า
+    rec.continuous = IS_IOS ? true : false;
+
+    rec.onresult = (e) => {
+      APP.rSpeechErrorCount = 0;
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) {
+          APP.rSpeechFinal += t + ' ';
+        } else {
+          interim += t;
+        }
       }
-    }
-    APP.rSpeechInterim = interim;
+      APP.rSpeechInterim = interim;
+      const display = (APP.rSpeechFinal + interim).trim();
+      if (display) {
+        document.getElementById('r-transcript-text').textContent = display;
+        document.getElementById('r-transcript-box').classList.add('show');
+      }
+    };
 
-    // แสดง interim live ใน transcript box
-    const display = (APP.rSpeechFinal + interim).trim();
-    if (display) {
-      document.getElementById('r-transcript-text').textContent = display;
-      document.getElementById('r-transcript-box').classList.add('show');
-    }
-  };
+    rec.onerror = (e) => {
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+        console.warn('Web Speech permission denied:', e.error);
+        APP.rSpeechRec = null;
+        return;
+      }
+      if (e.error === 'network') {
+        APP.rSpeechErrorCount++;
+        console.warn('Web Speech network error #' + APP.rSpeechErrorCount);
+        return;
+      }
+      // no-speech / aborted — ปกติ
+    };
 
-  APP.rSpeechRec.onerror = (e) => {
-    // no-speech และ aborted เป็น error ปกติ — ไม่ต้อง alert
-    if (e.error !== 'no-speech' && e.error !== 'aborted') {
-      console.warn('Web Speech error:', e.error);
-    }
-  };
+    rec.onend = () => {
+      if (!APP.rRecording) return; // หยุดบันทึกแล้ว — ไม่ restart
+      if (APP.rSpeechErrorCount >= 3) return; // error เกินไป — หยุด
 
-  APP.rSpeechRec.onend = () => {
-    // restart ถ้ายังบันทึกอยู่ (continuous ใน mobile มักหยุดเองทุก ~5 วิ)
-    if (APP.rRecording) {
-      try { APP.rSpeechRec.start(); } catch(_) {}
-    }
-  };
+      if (IS_IOS) {
+        // iOS: continuous=true มักหยุดเองช้ากว่า restart เล็กน้อย
+        try { rec.start(); } catch(_) {}
+      } else {
+        // Android: สร้าง instance ใหม่ทุกรอบ
+        try {
+          const next = createRec();
+          APP.rSpeechRec = next;
+          next.start();
+        } catch(_) {}
+      }
+    };
+
+    return rec;
+  }
 
   try {
+    APP.rSpeechRec = createRec();
     APP.rSpeechRec.start();
   } catch(e) {
     console.warn('Web Speech start failed:', e.message);
@@ -1925,7 +1964,9 @@ function rInitWebSpeechLive() {
 
 // ── หลังหยุด: ตัดสินใจว่าจะใช้ Whisper หรือ Web Speech result ──
 async function rProcessAudio() {
-  const hasWebSpeechResult = (APP.rSpeechFinal || '').trim().length > 0;
+  // รวม interim ด้วย กันกรณี Android หยุดก่อน onresult final
+  const webSpeechText = ((APP.rSpeechFinal || '') + (APP.rSpeechInterim || '')).trim();
+  const hasWebSpeechResult = webSpeechText.length > 0;
 
   // ── 1) Whisper (แม่นกว่า) — ถ้ามี key ──
   if (CFG.OPENAI_KEY && CFG.OPENAI_KEY !== 'YOUR_OPENAI_API_KEY') {
@@ -1937,21 +1978,29 @@ async function rProcessAudio() {
       console.warn('Whisper failed:', e.message);
       // ถ้า Whisper fail แต่มี Web Speech result → ใช้ได้เลย
       if (hasWebSpeechResult) {
-        rSetTranscript(APP.rSpeechFinal.trim());
+        rSetTranscript(webSpeechText);
         showToast('⚠ Whisper ล้มเหลว — ใช้ผล Web Speech แทน', 'amber');
         return;
       }
     }
   }
 
-  // ── 2) Web Speech live result (ฟรี, ทำงานใน Chrome/Edge) ──
+  // ── 2) Web Speech live result (Google STT ฟรี) ──
   if (hasWebSpeechResult) {
-    rSetTranscript(APP.rSpeechFinal.trim());
+    rSetTranscript(webSpeechText);
     showToast('🎙 แปลงเสียงสำเร็จ');
     return;
   }
 
-  // ── 3) ไม่มีทั้งคู่ ──
+  // ── 3) ยังไม่มีผล — รอสักครู่ก่อน (iOS อาจส่ง final result ช้า) ──
+  await new Promise(r => setTimeout(r, 600));
+  const webSpeechRetry = ((APP.rSpeechFinal || '') + (APP.rSpeechInterim || '')).trim();
+  if (webSpeechRetry.length > 0) {
+    rSetTranscript(webSpeechRetry);
+    showToast('🎙 แปลงเสียงสำเร็จ');
+    return;
+  }
+
   document.getElementById('r-rec-status').textContent = '⚠ ไม่สามารถแปลงเสียงได้';
   document.getElementById('r-rec-status').className   = 'rec-status';
 
@@ -1959,9 +2008,9 @@ async function rProcessAudio() {
   const noSpeech = !('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
 
   if (noKey && noSpeech) {
-    showToast('กรุณาใส่ OpenAI Key หรือใช้ Chrome/Edge', 'red');
+    showToast('กรุณาใช้ Safari (iOS) หรือ Chrome (Android)', 'red');
   } else if (noKey) {
-    showToast('Web Speech ไม่ได้ผล — ลองพิมพ์แทน หรือเพิ่ม OpenAI Key', 'amber');
+    showToast('ลองพิมพ์ข้อความแทนได้เลยครับ', 'amber');
   } else {
     showToast('แปลงเสียงไม่สำเร็จ — ลองพิมพ์ข้อความแทน', 'amber');
   }
@@ -1977,7 +2026,8 @@ async function rTranscribeWhisper() {
 
   if (audioBlob.size > 25 * 1024 * 1024) throw new Error('ไฟล์เสียงใหญ่เกิน 25MB');
 
-  const ext = mimeType.includes('mp4') ? 'mp4'
+  // iOS บันทึกเป็น audio/mp4 → Whisper ต้องการ .m4a หรือ .mp4
+  const ext = mimeType.includes('mp4') ? 'm4a'
             : mimeType.includes('ogg') ? 'ogg'
             : mimeType.includes('wav') ? 'wav'
             : 'webm';
