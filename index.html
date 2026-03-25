@@ -933,11 +933,11 @@ body {
 //  CONFIG — ใส่ค่าจริงก่อน deploy
 // ═══════════════════════════════════════════════
 const CFG = {
-  CLAUDE_KEY:      'YOUR_CLAUDE_API_KEY',    // ← Claude API key
-  OPENAI_KEY:      'YOUR_OPENAI_API_KEY',    // ← OpenAI key สำหรับ Whisper STT
+  // ── API Key: ดึงจาก localStorage (ตั้งค่าได้ในหน้า Admin → ตั้งค่าระบบ) ──
+  get CLAUDE_KEY() { return localStorage.getItem('sv_claude_key') || ''; },
   SUPABASE_URL:    'https://kgcnuelqgawslfcfzdcd.supabase.co',
   SUPABASE_KEY:    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtnY251ZWxxZ2F3c2xmY2Z6ZGNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNDg1NzgsImV4cCI6MjA4OTgyNDU3OH0.xlVn5RYNgfHf87tUYyMyMJWIGvLCD085y1g3EMEAf-Q',
-  STORAGE_BUCKET:  'near-miss-photos',       // ← Supabase Storage bucket name
+  STORAGE_BUCKET:  'near-miss-photos',
   REDEEM_COST:     300
 };
 
@@ -1108,8 +1108,6 @@ const APP = {
   rIsAnon:     false,
   rMode:       'voice',
   rRecording:  false,
-  rMediaRec:   null,
-  rBlobs:      [],
   rTimerInt:   null,
   rElapsed:    0,
   rTranscript: '',
@@ -1807,7 +1805,6 @@ function dbg(msg) { console.log('[SafeVoice]', msg); }
 
 async function rStartRec() {
 
-  APP.rBlobs         = [];
   APP.rSpeechFinal   = '';
   APP.rSpeechInterim = '';
   APP.rSpeechRec     = null;
@@ -1847,12 +1844,7 @@ function rStopRec() {
     APP.rSpeechRec = null;
   }
 
-  // MediaRecorder ถ้ามี (Whisper fallback)
-  if (APP.rMediaRec?.state === 'recording') {
-    APP.rMediaRec.stop(); // onstop จะเรียก rProcessAudio
-  } else {
-    rProcessAudio(); // ไม่มี MediaRecorder — เรียกตรงๆ
-  }
+  rProcessAudio();
 
   const btn = document.getElementById('r-rec-btn');
   btn.classList.remove('recording'); btn.textContent = '🎙';
@@ -1863,11 +1855,11 @@ function rStopRec() {
 // ═══════════════════════════════════════════════════════════════
 //  SPEECH-TO-TEXT ENGINE
 //  Architecture:
-//    rStartRec()  → เริ่ม MediaRecorder + Web Speech พร้อมกัน (live)
-//    rStopRec()   → หยุดทั้งคู่
-//    rProcessAudio() → ส่ง blob ไป Whisper (ถ้ามี key) แทน Web Speech result
+//    rStartRec()     → เริ่ม Web Speech API (Chrome/Safari)
+//    rStopRec()      → หยุดการบันทึก
+//    rProcessAudio() → รับผล Web Speech แล้วส่งต่อ
 //
-//  Priority: 1) Whisper (หลังหยุดบันทึก)  2) Web Speech live  3) แจ้ง error
+//  Engine: Web Speech API เท่านั้น (ไม่ใช้ Whisper)
 // ═══════════════════════════════════════════════════════════════
 
 // ── ติดตั้ง Web Speech live ระหว่าง rStartRec ──
@@ -1946,37 +1938,19 @@ function rInitWebSpeechLive() {
   startRec();
 }
 
-// ── หลังหยุด: ตัดสินใจว่าจะใช้ Whisper หรือ Web Speech result ──
+// ── หลังหยุด: รับผล Web Speech result ──
 async function rProcessAudio() {
   // รวม interim ด้วย กันกรณี Android หยุดก่อน onresult final
   const webSpeechText = ((APP.rSpeechFinal || '') + (APP.rSpeechInterim || '')).trim();
-  const hasWebSpeechResult = webSpeechText.length > 0;
 
-  // ── 1) Whisper (แม่นกว่า) — ถ้ามี key ──
-  if (CFG.OPENAI_KEY && CFG.OPENAI_KEY !== 'YOUR_OPENAI_API_KEY') {
-    document.getElementById('r-rec-status').textContent = '⌛ กำลังแปลงเสียง (Whisper)...';
-    try {
-      await rTranscribeWhisper();
-      return; // สำเร็จ — ไม่ต้องใช้ Web Speech
-    } catch(e) {
-      console.warn('Whisper failed:', e.message);
-      // ถ้า Whisper fail แต่มี Web Speech result → ใช้ได้เลย
-      if (hasWebSpeechResult) {
-        rSetTranscript(webSpeechText);
-        showToast('⚠ Whisper ล้มเหลว — ใช้ผล Web Speech แทน', 'amber');
-        return;
-      }
-    }
-  }
-
-  // ── 2) Web Speech live result (Google STT ฟรี) ──
-  if (hasWebSpeechResult) {
+  // ── 1) มีผลจาก Web Speech ──
+  if (webSpeechText.length > 0) {
     rSetTranscript(webSpeechText);
     showToast('🎙 แปลงเสียงสำเร็จ');
     return;
   }
 
-  // ── 3) ยังไม่มีผล — รอสักครู่ก่อน (iOS อาจส่ง final result ช้า) ──
+  // ── 2) ยังไม่มีผล — รอสักครู่ก่อน (iOS อาจส่ง final result ช้า) ──
   await new Promise(r => setTimeout(r, 600));
   const webSpeechRetry = ((APP.rSpeechFinal || '') + (APP.rSpeechInterim || '')).trim();
   if (webSpeechRetry.length > 0) {
@@ -1985,60 +1959,16 @@ async function rProcessAudio() {
     return;
   }
 
+  // ── 3) ไม่ได้ผลเลย ──
   document.getElementById('r-rec-status').textContent = '⚠ ไม่สามารถแปลงเสียงได้';
   document.getElementById('r-rec-status').className   = 'rec-status';
-
-  const noKey    = !CFG.OPENAI_KEY || CFG.OPENAI_KEY === 'YOUR_OPENAI_API_KEY';
   const noSpeech = !('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
-
-  if (noKey && noSpeech) {
+  if (noSpeech) {
     showToast('กรุณาใช้ Safari (iOS) หรือ Chrome (Android)', 'red');
-  } else if (noKey) {
-    showToast('ลองพิมพ์ข้อความแทนได้เลยครับ', 'amber');
   } else {
     showToast('แปลงเสียงไม่สำเร็จ — ลองพิมพ์ข้อความแทน', 'amber');
   }
   rSwitchMode('text');
-}
-
-// ── Whisper API (OpenAI) ──
-async function rTranscribeWhisper() {
-  if (!APP.rBlobs.length) throw new Error('ไม่มีข้อมูลเสียง');
-
-  const mimeType  = APP.rBlobs[0]?.type || 'audio/webm';
-  const audioBlob = new Blob(APP.rBlobs, { type: mimeType });
-
-  if (audioBlob.size > 25 * 1024 * 1024) throw new Error('ไฟล์เสียงใหญ่เกิน 25MB');
-
-  // iOS บันทึกเป็น audio/mp4 → Whisper ต้องการ .m4a หรือ .mp4
-  const ext = mimeType.includes('mp4') ? 'm4a'
-            : mimeType.includes('ogg') ? 'ogg'
-            : mimeType.includes('wav') ? 'wav'
-            : 'webm';
-
-  const formData = new FormData();
-  formData.append('file', audioBlob, `recording.${ext}`);
-  formData.append('model', 'whisper-1');
-  formData.append('language', 'th');
-  formData.append('temperature', '0');
-
-  const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-    method:  'POST',
-    headers: { 'Authorization': `Bearer ${CFG.OPENAI_KEY}` },
-    body:    formData
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `Whisper error ${res.status}`);
-  }
-
-  const data = (await res.json());
-  const text = (data.text || '').trim();
-  if (!text) throw new Error('Whisper ส่งค่าว่างกลับมา');
-
-  rSetTranscript(text);
-  showToast('🎙 แปลงเสียงด้วย Whisper สำเร็จ');
 }
 
 function rSetTranscript(text) {
@@ -2242,7 +2172,23 @@ async function rAnalyze() {
 
   try {
     APP.rAiResult = await callClaude(input);
-  } catch {
+  } catch(err) {
+    if (err.message === 'no_key') {
+      // ยังไม่ได้ตั้งค่า API Key — แสดง error ชัดเจน
+      document.getElementById('r-spinner').classList.remove('show');
+      document.getElementById('r-analyze-txt').textContent = '🤖 วิเคราะห์ด้วย AI';
+      document.getElementById('r-analyze-btn').disabled = false;
+      document.getElementById('r-ai-result').style.display = 'block';
+      document.getElementById('r-ai-result').innerHTML = `
+        <div style="background:#ef444415;border:1px solid #ef444455;border-radius:12px;padding:16px 18px;text-align:center;">
+          <div style="font-size:22px;margin-bottom:8px;">🔑</div>
+          <div style="font-size:14px;font-weight:700;color:var(--red);margin-bottom:6px;">ยังไม่ได้ตั้งค่า Claude API Key</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">กรุณาให้ Admin ไปตั้งค่า API Key ที่<br><strong>Admin Panel → ตั้งค่าระบบ</strong></div>
+          <div style="font-size:11px;color:var(--muted);">หากยังไม่มี Key สามารถขอได้ที่ console.anthropic.com</div>
+        </div>`;
+      return;
+    }
+    // error อื่น (network, quota) → fallback demo
     APP.rAiResult = { risk_level:'Medium', category:'อุปกรณ์ชำรุด', summary_th:'พบอุปกรณ์ชำรุดในพื้นที่ปฏิบัติงาน มีความเสี่ยงต่อความปลอดภัยพนักงาน', action:'หยุดใช้อุปกรณ์ทันทีและส่งซ่อม แจ้งหัวหน้างานภายใน 24 ชั่วโมง', credits:50, heinrich_note:'จัดอยู่ใน Unsafe Conditions ใน 300 Near Miss ที่ควรแก้ไขทันที', keywords:['อุปกรณ์','ชำรุด','พื้นที่ปฏิบัติงาน'], risk_keywords:['ชำรุด','เสียหาย'], confidence:78 };
   } finally {
     document.getElementById('r-spinner').classList.remove('show');
@@ -2276,10 +2222,11 @@ async function rAnalyze() {
 }
 
 async function callClaude(text) {
-  if (CFG.CLAUDE_KEY === 'YOUR_CLAUDE_API_KEY') throw new Error('demo');
+  const key = CFG.CLAUDE_KEY;
+  if (!key || !key.startsWith('sk-ant')) throw new Error('no_key');
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method:'POST',
-    headers:{'Content-Type':'application/json','x-api-key':CFG.CLAUDE_KEY,'anthropic-version':'2023-06-01'},
+    headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
     body: JSON.stringify({
       model:'claude-sonnet-4-20250514', max_tokens:800,
       system:`คุณคือระบบ AI วิเคราะห์ความปลอดภัยในงานไฟฟ้า PEA ตอบกลับเป็น JSON เท่านั้น ไม่มีข้อความอื่น ไม่มี markdown
