@@ -240,7 +240,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--navy);color:var(--white);
 
     <div class="sb-section">พนักงาน</div>
     <button class="tab-btn" id="t-credits"  onclick="go('credits')"> <span class="tab-icon">⭐</span>Credits พนักงาน</button>
-    <button class="tab-btn" id="t-warnings" onclick="go('warnings')"><span class="tab-icon">⚠</span>เพิ่มใบเตือน</button>
+    <button class="tab-btn" id="t-warnings" onclick="go('warnings')"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;vertical-align:middle"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>เพิ่มใบเตือน</button>
 
     <div class="sb-section">ระบบ</div>
     <button class="tab-btn" id="t-users" onclick="go('users')"><span class="tab-icon">🔐</span>จัดการสิทธิ์</button>
@@ -376,7 +376,20 @@ body{font-family:'Sarabun',sans-serif;background:var(--navy);color:var(--white);
         <div class="section-label">➕ ออกใบเตือนใหม่</div>
         <div class="fg">
           <label class="fl">พนักงาน</label>
-          <select class="fs" id="w-emp"><option value="">-- เลือกพนักงาน --</option></select>
+          <div style="position:relative;">
+            <input class="fi" id="w-emp-search" list="w-emp-list"
+              placeholder="พิมพ์ชื่อหรือรหัสพนักงาน..."
+              oninput="wFilterEmp(this.value)"
+              autocomplete="off"
+              style="padding-right:36px;">
+            <input type="hidden" id="w-emp">
+            <datalist id="w-emp-list"></datalist>
+            <div id="w-emp-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:1px solid var(--border);border-radius:10px;max-height:220px;overflow-y:auto;z-index:200;margin-top:4px;box-shadow:0 8px 24px #00000066;"></div>
+          </div>
+          <div id="w-emp-selected" style="display:none;margin-top:6px;background:var(--navy);border:1px solid #00c96a44;border-radius:8px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;">
+            <span id="w-emp-selected-name" style="font-size:13px;font-weight:600;color:var(--green);"></span>
+            <button onclick="wClearEmp()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;">×</button>
+          </div>
         </div>
         <div class="fg">
           <label class="fl">เรื่องใบเตือน</label>
@@ -402,9 +415,9 @@ body{font-family:'Sarabun',sans-serif;background:var(--navy);color:var(--white);
       <div class="card">
         <div class="section-label">➕ เพิ่มพนักงานใหม่</div>
         <div class="form-grid">
-          <div class="fg" style="margin:0"><label class="fl">รหัสพนักงาน</label><input class="fi" id="u-code" placeholder="เช่น 278629"></div>
-          <div class="fg" style="margin:0"><label class="fl">ชื่อ-นามสกุล</label><input class="fi" id="u-name" placeholder="นายสมชาย มั่นคง"></div>
-          <div class="fg" style="margin:0"><label class="fl">แผนก</label><input class="fi" id="u-dept" placeholder="งานบำรุงรักษา..."></div>
+          <div class="fg" style="margin:0"><label class="fl">รหัสพนักงาน</label><input class="fi" id="u-code" placeholder=""></div>
+          <div class="fg" style="margin:0"><label class="fl">ชื่อ-นามสกุล</label><input class="fi" id="u-name" placeholder=""></div>
+          <div class="fg" style="margin:0"><label class="fl">แผนก</label><input class="fi" id="u-dept" placeholder=""></div>
           <div class="fg" style="margin:0"><label class="fl">สิทธิ์</label>
             <select class="fs" id="u-role">
               <option value="employee">พนักงาน</option>
@@ -454,7 +467,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--navy);color:var(--white);
     <div class="mhandle"></div>
     <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:2px;margin-bottom:12px;">เมนูเพิ่มเติม</div>
     <button class="more-item" onclick="go('credits');toggleMoreMenu()">⭐ Credits พนักงาน</button>
-    <button class="more-item" onclick="go('warnings');toggleMoreMenu()">⚠ เพิ่มใบเตือน</button>
+    <button class="more-item" onclick="go('warnings');toggleMoreMenu()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;vertical-align:middle;margin-right:8px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>เพิ่มใบเตือน</button>
     <button class="more-item" onclick="go('users');toggleMoreMenu()">🔐 จัดการสิทธิ์</button>
   </div>
 </div>
@@ -968,9 +981,63 @@ function renderCredits(){
 
 // ══ WARNINGS ══
 function fillEmpDD(){
-  const s=document.getElementById('w-emp');if(!s)return;
-  s.innerHTML='<option value="">-- เลือกพนักงาน --</option>'+DB.employees.filter(e=>e.role==='employee').map(e=>`<option value="${e.id}">${e.name} (${e.id})</option>`).join('');
+  // populate datalist สำหรับ searchable input
+  const dl = document.getElementById('w-emp-list'); if(!dl) return;
+  dl.innerHTML = DB.employees.filter(e=>e.role==='employee')
+    .map(e=>`<option value="${e.name} (${e.id})" data-id="${e.id}">`).join('');
 }
+
+// ── พิมพ์ค้นหาพนักงาน → แสดง dropdown ──
+function wFilterEmp(val) {
+  const dd   = document.getElementById('w-emp-dropdown');
+  const hidEl= document.getElementById('w-emp');
+  const selEl= document.getElementById('w-emp-selected');
+  const selNm= document.getElementById('w-emp-selected-name');
+  if (!dd) return;
+
+  const q = val.trim().toLowerCase();
+  if (!q) { dd.style.display='none'; return; }
+
+  const matches = DB.employees.filter(e =>
+    e.role === 'employee' &&
+    (e.name.toLowerCase().includes(q) || e.id.toLowerCase().includes(q))
+  ).slice(0, 10);
+
+  if (!matches.length) { dd.style.display='none'; return; }
+
+  dd.innerHTML = matches.map(e => `
+    <div onclick="wSelectEmp('${e.id}','${e.name.replace(/'/g,"&#39;")}')"
+      style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);transition:background .15s;"
+      onmouseover="this.style.background='var(--navy)'" onmouseout="this.style.background=''">
+      <span style="font-weight:700;color:var(--white);">${e.name}</span>
+      <span style="color:var(--muted);font-family:monospace;font-size:11px;margin-left:8px;">${e.id}</span>
+    </div>`).join('');
+  dd.style.display = 'block';
+}
+
+function wSelectEmp(id, name) {
+  document.getElementById('w-emp').value        = id;
+  document.getElementById('w-emp-search').value = '';
+  document.getElementById('w-emp-dropdown').style.display = 'none';
+  const selEl = document.getElementById('w-emp-selected');
+  const selNm = document.getElementById('w-emp-selected-name');
+  selEl.style.display = 'flex';
+  selNm.textContent   = name + '  (' + id + ')';
+}
+
+function wClearEmp() {
+  document.getElementById('w-emp').value        = '';
+  document.getElementById('w-emp-search').value = '';
+  document.getElementById('w-emp-selected').style.display = 'none';
+}
+
+// ปิด dropdown เมื่อคลิกนอกพื้นที่
+document.addEventListener('click', e => {
+  const dd = document.getElementById('w-emp-dropdown');
+  if (dd && !dd.contains(e.target) && e.target.id !== 'w-emp-search') {
+    dd.style.display = 'none';
+  }
+});
 // ══ โหลด warnings จาก Supabase ══
 async function loadWarnings() {
   try {
@@ -1048,7 +1115,7 @@ async function submitWarning(){
     const inserted = await res.json();
     const newUUID = inserted?.[0]?.id || wid;
     DB.warnings.unshift({id:wid, _uuid:newUUID, emp_id:empId, emp_name:emp?.name||empId, date:today, issue, impact:`ใบเตือนครั้งที่ ${cnt}`, status:'active'});
-    document.getElementById('w-issue').value=''; document.getElementById('w-cnt').value='1';
+    document.getElementById('w-issue').value=''; document.getElementById('w-cnt').value='1'; wClearEmp();
     renderWarnHist(); renderCredits();
     showToast(`⚠ ออกใบเตือน ${wid} ให้ ${emp?.name} แล้ว`,'amber');
   } catch(e) {
