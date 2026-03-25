@@ -672,6 +672,52 @@ const APP={vf:'pending',pendingReset:null};
 // ══ SUPABASE CONFIG ══
 const SB_URL = 'https://kgcnuelqgawslfcfzdcd.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtnY251ZWxxZ2F3c2xmY2Z6ZGNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNDg1NzgsImV4cCI6MjA4OTgyNDU3OH0.xlVn5RYNgfHf87tUYyMyMJWIGvLCD085y1g3EMEAf-Q';
+const SB_BUCKET = 'near-miss-photos';
+
+// ── สร้าง URL รูปจาก Supabase Storage ──
+function photoUrl(reportCode, idx, ext='jpg') {
+  return `${SB_URL}/storage/v1/object/public/${SB_BUCKET}/${reportCode}/photo_${idx}.${ext}`;
+}
+
+// ── โหลดและแสดงรูปในการ์ด (lazy) ──
+async function loadPhotos(reportCode, photoCount, containerId) {
+  const el = document.getElementById(containerId);
+  if (!el || !photoCount) return;
+  el.innerHTML = '<div style="font-size:11px;color:var(--muted);">⌛ กำลังโหลดรูป...</div>';
+  const exts = ['jpg','jpeg','png','webp'];
+  const found = [];
+  for (let i = 0; i < photoCount; i++) {
+    let url = null;
+    for (const ext of exts) {
+      const u = photoUrl(reportCode, i, ext);
+      try {
+        const res = await fetch(u, { method:'HEAD' });
+        if (res.ok) { url = u; break; }
+      } catch(_) {}
+    }
+    if (url) found.push(url);
+  }
+  if (!found.length) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--muted);">ไม่พบรูปใน Storage</div>';
+    return;
+  }
+  el.innerHTML = found.map((u,i) => `
+    <img src="${u}" onclick="adminViewPhoto('${u}')"
+      style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:2px solid var(--border);cursor:pointer;transition:border-color .2s;"
+      onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'"
+      onerror="this.style.display='none'"
+      title="คลิกเพื่อขยาย">`).join('');
+}
+
+// ── Lightbox ดูรูปเต็มจอ ──
+function adminViewPhoto(url) {
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:#000000ee;z-index:999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;';
+  ov.onclick = () => ov.remove();
+  ov.innerHTML = `<img src="${url}" style="max-width:95vw;max-height:92vh;border-radius:10px;box-shadow:0 0 40px #000;">`
+    + `<button onclick="this.parentElement.remove()" style="position:absolute;top:16px;right:20px;background:none;border:none;color:#fff;font-size:28px;cursor:pointer;line-height:1;">✕</button>`;
+  document.body.appendChild(ov);
+}
 
 const sbHeaders = {
   'Content-Type': 'application/json',
@@ -863,9 +909,16 @@ function renderVerify(){
       <div class="rc-meta">
         ${r.is_anon?'<span>🔒 นิรนาม</span>':`<span style="color:var(--ice);font-weight:600;">👤 ${r.emp_name}</span>`}
         <span>📁 ${r.category}</span>
-        ${r.photos>0?`<span>📷 ${r.photos}</span>`:''}
         ${r.credits>0?`<span class="rc-cred">+${r.credits}</span>`:''}
       </div>
+      ${r.photos > 0 ? `
+      <div style="margin-bottom:9px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span style="font-size:11px;color:var(--muted);">📷 รูปภาพ ${r.photos} รูป</span>
+          <button class="btn-sm" onclick="loadPhotos('${r.id}',${r.photos},'ph-${r.id}');this.style.display='none'">โหลดรูป</button>
+        </div>
+        <div id="ph-${r.id}" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+      </div>` : '<div style="font-size:11px;color:var(--muted);margin-bottom:9px;">📷 ไม่มีรูปภาพ</div>'}
       <div id="ai-${r.id}" style="display:none;background:var(--navy);border-radius:8px;padding:10px;margin-bottom:9px;font-size:12px;color:var(--muted);">
         เชื่อม Claude API เพื่อดู AI Analysis จริง
       </div>
