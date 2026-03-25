@@ -691,14 +691,7 @@ body {
             <span></span><span></span><span></span><span></span>
             <span></span><span></span><span></span><span></span>
           </div>
-          <!-- Debug Panel — แสดงเฉพาะตอน test, ซ่อนได้ -->
-          <div id="r-debug-panel" style="display:block;margin:8px 0;">
-            <div style="font-size:9px;color:var(--muted);letter-spacing:1.5px;margin-bottom:4px;display:flex;justify-content:space-between;">
-              <span>DEBUG LOG</span>
-              <span onclick="document.getElementById('r-debug-panel').style.display='none'" style="cursor:pointer;color:var(--red);">✕ ซ่อน</span>
-            </div>
-            <div id="r-debug-log" style="background:#050e1a;border:1px solid var(--border);border-radius:8px;padding:8px;max-height:120px;overflow-y:auto;text-align:left;font-family:monospace;"></div>
-          </div>
+
           <div class="transcript-box" id="r-transcript-box">
             <div class="t-label">TRANSCRIPT</div>
             <div class="t-text" id="r-transcript-text"></div>
@@ -1751,18 +1744,7 @@ function toggleDashHistory() {
 //  REPORT
 // ═══════════════════════════════════════════════
 function initReport() {
-  // ตรวจ browser support ตั้งแต่โหลด
-  setTimeout(() => {
-    const hasSR = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
-    const hasMR = !!window.MediaRecorder;
-    const hasMic = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
-    dbg('=== Browser Check ===');
-    dbg('SpeechRecognition: ' + hasSR);
-    dbg('MediaRecorder: ' + hasMR);
-    dbg('getUserMedia: ' + hasMic);
-    dbg('IS_IOS: ' + IS_IOS);
-    dbg('UserAgent: ' + navigator.userAgent.slice(0,60));
-  }, 500);
+
   APP.rIsAnon = false; APP.rMode = 'voice'; APP.rRecording = false;
   APP.rTranscript = ''; APP.rPhotos = []; APP.rPhotosB64 = []; APP.rAiResult = null; APP.rElapsed = 0;
   APP.rSpeechFinal = ''; APP.rSpeechInterim = ''; APP.rSpeechRec = null;
@@ -1821,23 +1803,9 @@ async function rToggleRecord() {
   if (!APP.rRecording) await rStartRec(); else rStopRec();
 }
 
-// ── debug log ที่แสดงใน UI ──
-function dbg(msg) {
-  console.log('[SafeVoice]', msg);
-  const el = document.getElementById('r-debug-log');
-  if (!el) return;
-  const line = document.createElement('div');
-  line.textContent = new Date().toLocaleTimeString('th') + ' ' + msg;
-  line.style.cssText = 'font-size:10px;color:#7acf9a;border-bottom:1px solid #1a3050;padding:2px 0;';
-  el.appendChild(line);
-  el.scrollTop = el.scrollHeight;
-}
+function dbg(msg) { console.log('[SafeVoice]', msg); }
 
 async function rStartRec() {
-  // ล้าง debug log
-  const dbgEl = document.getElementById('r-debug-log');
-  if (dbgEl) dbgEl.innerHTML = '';
-  document.getElementById('r-debug-panel')?.style.setProperty('display','block');
 
   APP.rBlobs         = [];
   APP.rSpeechFinal   = '';
