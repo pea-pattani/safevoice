@@ -691,6 +691,14 @@ body {
             <span></span><span></span><span></span><span></span>
             <span></span><span></span><span></span><span></span>
           </div>
+          <!-- Debug Panel — แสดงเฉพาะตอน test, ซ่อนได้ -->
+          <div id="r-debug-panel" style="display:none;margin:8px 0;">
+            <div style="font-size:9px;color:var(--muted);letter-spacing:1.5px;margin-bottom:4px;display:flex;justify-content:space-between;">
+              <span>DEBUG LOG</span>
+              <span onclick="document.getElementById('r-debug-panel').style.display='none'" style="cursor:pointer;color:var(--red);">✕ ซ่อน</span>
+            </div>
+            <div id="r-debug-log" style="background:#050e1a;border:1px solid var(--border);border-radius:8px;padding:8px;max-height:120px;overflow-y:auto;text-align:left;font-family:monospace;"></div>
+          </div>
           <div class="transcript-box" id="r-transcript-box">
             <div class="t-label">TRANSCRIPT</div>
             <div class="t-text" id="r-transcript-text"></div>
@@ -1801,9 +1809,28 @@ async function rToggleRecord() {
   if (!APP.rRecording) await rStartRec(); else rStopRec();
 }
 
+// ── debug log ที่แสดงใน UI ──
+function dbg(msg) {
+  console.log('[SafeVoice]', msg);
+  const el = document.getElementById('r-debug-log');
+  if (!el) return;
+  const line = document.createElement('div');
+  line.textContent = new Date().toLocaleTimeString('th') + ' ' + msg;
+  line.style.cssText = 'font-size:10px;color:#7acf9a;border-bottom:1px solid #1a3050;padding:2px 0;';
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
 async function rStartRec() {
+  // ล้าง debug log
+  const dbgEl = document.getElementById('r-debug-log');
+  if (dbgEl) dbgEl.innerHTML = '';
+  document.getElementById('r-debug-panel')?.style.setProperty('display','block');
+
   try {
+    dbg('ขอ microphone permission...');
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    dbg('✅ ได้ stream แล้ว');
     APP.rBlobs        = [];
     APP.rSpeechFinal  = '';
     APP.rSpeechInterim= '';
@@ -1815,17 +1842,29 @@ async function rStartRec() {
       try { return MediaRecorder.isTypeSupported(t); } catch(_){ return false; }
     }) || '';
     APP.rRecMimeType = mimeType;
+    dbg('mimeType: ' + (mimeType || 'default'));
+    dbg('IS_IOS: ' + IS_IOS);
+    dbg('SpeechRecognition: ' + !!(window.SpeechRecognition || window.webkitSpeechRecognition));
+
     try {
       APP.rMediaRec = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-    } catch(_) {
-      APP.rMediaRec = new MediaRecorder(stream); // fallback ไม่ระบุ type
+      dbg('✅ MediaRecorder OK: ' + APP.rMediaRec.state);
+    } catch(merr) {
+      dbg('⚠ MediaRecorder fallback: ' + merr.message);
+      APP.rMediaRec = new MediaRecorder(stream);
     }
-    APP.rMediaRec.ondataavailable = e => { if (e.data.size > 0) APP.rBlobs.push(e.data); };
+    APP.rMediaRec.ondataavailable = e => {
+      if (e.data.size > 0) {
+        APP.rBlobs.push(e.data);
+        dbg('blob: ' + e.data.size + 'B (total ' + APP.rBlobs.length + ')');
+      }
+    };
     APP.rMediaRec.onstop = () => { stream.getTracks().forEach(t => t.stop()); rProcessAudio(); };
-    APP.rMediaRec.start(250); // timeslice 250ms — บังคับให้ data มาถี่ขึ้น ป้องกัน blob ว่าง
+    APP.rMediaRec.start(250);
     APP.rRecording = true; APP.rElapsed = 0;
+    dbg('▶ MediaRecorder started');
 
-    // เริ่ม Web Speech live พร้อมกันเลย (fallback ฟรี)
+    // เริ่ม Web Speech live พร้อมกันเลย
     rInitWebSpeechLive();
 
     const btn = document.getElementById('r-rec-btn');
@@ -1890,76 +1929,66 @@ function rInitWebSpeechLive() {
   APP.rSpeechInterim    = '';
   APP.rSpeechErrorCount = 0;
 
-  function createRec() {
-    const rec = new SR();
-    rec.lang           = 'th-TH';
-    rec.interimResults = true;
-    rec.maxAlternatives = 1;
+  function startRec() {
+    if (!APP.rRecording) return;
+    try {
+      const rec = new SR();
+      rec.lang            = 'th-TH';
+      rec.continuous      = true;   // ใช้ continuous=true ทั้ง iOS และ Android
+      rec.interimResults  = true;
+      rec.maxAlternatives = 1;
+      APP.rSpeechRec = rec;
 
-    // iOS Safari: continuous=true ทำงานได้ดีกว่า restart loop
-    // Android Chrome: continuous=false + restart ทำงานได้เสถียรกว่า
-    rec.continuous = IS_IOS ? true : false;
-
-    rec.onresult = (e) => {
-      APP.rSpeechErrorCount = 0;
-      let interim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const t = e.results[i][0].transcript;
-        if (e.results[i].isFinal) {
-          APP.rSpeechFinal += t + ' ';
-        } else {
-          interim += t;
+      rec.onresult = (e) => {
+        APP.rSpeechErrorCount = 0; // reset error count เมื่อได้ผล
+        let interim = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const t = e.results[i][0].transcript;
+          if (e.results[i].isFinal) {
+            APP.rSpeechFinal += t + ' ';
+            dbg('✅ final: "' + t + '"');
+          } else {
+            interim += t;
+          }
         }
-      }
-      APP.rSpeechInterim = interim;
-      const display = (APP.rSpeechFinal + interim).trim();
-      if (display) {
-        document.getElementById('r-transcript-text').textContent = display;
-        document.getElementById('r-transcript-box').classList.add('show');
-      }
-    };
+        APP.rSpeechInterim = interim;
+        const display = (APP.rSpeechFinal + interim).trim();
+        if (display) {
+          document.getElementById('r-transcript-text').textContent = display;
+          document.getElementById('r-transcript-box').classList.add('show');
+        }
+      };
 
-    rec.onerror = (e) => {
-      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-        console.warn('Web Speech permission denied:', e.error);
-        APP.rSpeechRec = null;
-        return;
-      }
-      if (e.error === 'network') {
-        APP.rSpeechErrorCount++;
-        console.warn('Web Speech network error #' + APP.rSpeechErrorCount);
-        return;
-      }
-      // no-speech / aborted — ปกติ
-    };
+      rec.onerror = (e) => {
+        dbg('⚠ Speech error: ' + e.error);
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+          APP.rSpeechRec = null;
+          return;
+        }
+        // network error — นับ และ restart ใหม่
+        if (e.error === 'network') {
+          APP.rSpeechErrorCount++;
+        }
+        // no-speech / aborted — ปกติ ไม่นับ
+      };
 
-    rec.onend = () => {
-      if (!APP.rRecording) return; // หยุดบันทึกแล้ว — ไม่ restart
-      if (APP.rSpeechErrorCount >= 3) return; // error เกินไป — หยุด
+      rec.onend = () => {
+        // ถ้ายังบันทึกอยู่และ error ไม่เกิน 5 ครั้ง → restart ทันที
+        if (APP.rRecording && APP.rSpeechErrorCount < 5) {
+          // delay เล็กน้อยก่อน restart ป้องกัน rapid loop
+          setTimeout(startRec, 100);
+        }
+      };
 
-      if (IS_IOS) {
-        // iOS: continuous=true มักหยุดเองช้ากว่า restart เล็กน้อย
-        try { rec.start(); } catch(_) {}
-      } else {
-        // Android: สร้าง instance ใหม่ทุกรอบ
-        try {
-          const next = createRec();
-          APP.rSpeechRec = next;
-          next.start();
-        } catch(_) {}
-      }
-    };
-
-    return rec;
+      rec.start();
+      dbg('▶ Web Speech started');
+    } catch(e) {
+      dbg('❌ Web Speech start failed: ' + e.message);
+      APP.rSpeechRec = null;
+    }
   }
 
-  try {
-    APP.rSpeechRec = createRec();
-    APP.rSpeechRec.start();
-  } catch(e) {
-    console.warn('Web Speech start failed:', e.message);
-    APP.rSpeechRec = null;
-  }
+  startRec();
 }
 
 // ── หลังหยุด: ตัดสินใจว่าจะใช้ Whisper หรือ Web Speech result ──
