@@ -1839,63 +1839,33 @@ async function rStartRec() {
   if (dbgEl) dbgEl.innerHTML = '';
   document.getElementById('r-debug-panel')?.style.setProperty('display','block');
 
-  try {
-    dbg('ขอ microphone permission...');
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    dbg('✅ ได้ stream แล้ว');
-    APP.rBlobs        = [];
-    APP.rSpeechFinal  = '';
-    APP.rSpeechInterim= '';
-    APP.rSpeechRec    = null;
+  APP.rBlobs         = [];
+  APP.rSpeechFinal   = '';
+  APP.rSpeechInterim = '';
+  APP.rSpeechRec     = null;
+  APP.rRecording     = true;
+  APP.rElapsed       = 0;
 
-    // iOS Safari รองรับ audio/mp4 เท่านั้น — Android รองรับ audio/webm
-    const preferredTypes = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg'];
-    const mimeType = preferredTypes.find(t => {
-      try { return MediaRecorder.isTypeSupported(t); } catch(_){ return false; }
-    }) || '';
-    APP.rRecMimeType = mimeType;
-    dbg('mimeType: ' + (mimeType || 'default'));
-    dbg('IS_IOS: ' + IS_IOS);
-    dbg('SpeechRecognition: ' + !!(window.SpeechRecognition || window.webkitSpeechRecognition));
+  dbg('IS_IOS: ' + IS_IOS);
+  dbg('SpeechRecognition: ' + !!(window.SpeechRecognition || window.webkitSpeechRecognition));
 
-    try {
-      APP.rMediaRec = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-      dbg('✅ MediaRecorder OK: ' + APP.rMediaRec.state);
-    } catch(merr) {
-      dbg('⚠ MediaRecorder fallback: ' + merr.message);
-      APP.rMediaRec = new MediaRecorder(stream);
-    }
-    APP.rMediaRec.ondataavailable = e => {
-      if (e.data.size > 0) {
-        APP.rBlobs.push(e.data);
-        dbg('blob: ' + e.data.size + 'B (total ' + APP.rBlobs.length + ')');
-      }
-    };
-    APP.rMediaRec.onstop = () => { stream.getTracks().forEach(t => t.stop()); rProcessAudio(); };
-    APP.rMediaRec.start(250);
-    APP.rRecording = true; APP.rElapsed = 0;
-    dbg('▶ MediaRecorder started');
+  // ── เริ่ม Web Speech ก่อน (ไม่แย่ง mic กับ MediaRecorder) ──
+  rInitWebSpeechLive();
 
-    // เริ่ม Web Speech live พร้อมกันเลย
-    rInitWebSpeechLive();
+  const btn = document.getElementById('r-rec-btn');
+  btn.classList.add('recording'); btn.textContent = '⏹';
+  document.getElementById('r-rec-status').textContent = '● กำลังบันทึก...';
+  document.getElementById('r-rec-status').className = 'rec-status recording';
+  document.getElementById('r-waveform').classList.add('active');
 
-    const btn = document.getElementById('r-rec-btn');
-    btn.classList.add('recording'); btn.textContent = '⏹';
-    document.getElementById('r-rec-status').textContent = '● กำลังบันทึก...';
-    document.getElementById('r-rec-status').className = 'rec-status recording';
-    document.getElementById('r-waveform').classList.add('active');
-
-    APP.rTimerInt = setInterval(() => {
-      APP.rElapsed++;
-      const m = String(Math.floor(APP.rElapsed / 60)).padStart(2, '0');
-      const s = String(APP.rElapsed % 60).padStart(2, '0');
-      document.getElementById('r-timer').textContent = `${m}:${s} / 0:30`;
-      document.getElementById('r-timer').className = 'timer active';
-      if (APP.rElapsed >= 30) rStopRec();
-    }, 1000);
-  } catch(e) {
-    showToast('ไม่สามารถเข้าถึงไมโครโฟน: ' + e.message, 'red');
-  }
+  APP.rTimerInt = setInterval(() => {
+    APP.rElapsed++;
+    const m = String(Math.floor(APP.rElapsed / 60)).padStart(2, '0');
+    const s = String(APP.rElapsed % 60).padStart(2, '0');
+    document.getElementById('r-timer').textContent = `${m}:${s} / 0:30`;
+    document.getElementById('r-timer').className = 'timer active';
+    if (APP.rElapsed >= 30) rStopRec();
+  }, 1000);
 }
 
 function rStopRec() {
@@ -1903,13 +1873,18 @@ function rStopRec() {
   APP.rRecording = false;
   clearInterval(APP.rTimerInt);
 
-  // หยุด Web Speech ก่อน (ป้องกัน auto-restart ใน onend)
+  // หยุด Web Speech (ป้องกัน auto-restart ใน onend)
   if (APP.rSpeechRec) {
     try { APP.rSpeechRec.stop(); } catch(_) {}
     APP.rSpeechRec = null;
   }
 
-  if (APP.rMediaRec?.state !== 'inactive') APP.rMediaRec.stop();
+  // MediaRecorder ถ้ามี (Whisper fallback)
+  if (APP.rMediaRec?.state === 'recording') {
+    APP.rMediaRec.stop(); // onstop จะเรียก rProcessAudio
+  } else {
+    rProcessAudio(); // ไม่มี MediaRecorder — เรียกตรงๆ
+  }
 
   const btn = document.getElementById('r-rec-btn');
   btn.classList.remove('recording'); btn.textContent = '🎙';
