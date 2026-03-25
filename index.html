@@ -1767,7 +1767,7 @@ function toggleDashHistory() {
 function initReport() {
 
   APP.rIsAnon = false; APP.rMode = 'voice'; APP.rRecording = false;
-  APP.rTranscript = ''; APP.rPhotos = []; APP.rPhotosB64 = []; APP.rAiResult = null; APP.rAiDemoMode = false; APP.rElapsed = 0;
+  APP.rTranscript = ''; APP.rPhotos = []; APP.rPhotosB64 = []; APP.rAiResult = null; APP.rAiDemoMode = false; APP.rElapsed = 0; APP.rSpeechFinalIdx = 0;
   APP.rSpeechFinal = ''; APP.rSpeechInterim = ''; APP.rSpeechRec = null;
   clearInterval(APP.rTimerInt);
   document.getElementById('r-emp-badge').textContent = APP.loggedUser?.emp_code || '—';
@@ -1898,25 +1898,31 @@ function rInitWebSpeechLive() {
   APP.rSpeechFinal      = '';
   APP.rSpeechInterim    = '';
   APP.rSpeechErrorCount = 0;
+  APP.rSpeechFinalIdx   = 0; // track result index สุดท้ายที่ append แล้ว
 
   function startRec() {
     if (!APP.rRecording) return;
     try {
       const rec = new SR();
       rec.lang            = 'th-TH';
-      rec.continuous      = true;   // ใช้ continuous=true ทั้ง iOS และ Android
+      rec.continuous      = true;
       rec.interimResults  = true;
       rec.maxAlternatives = 1;
       APP.rSpeechRec = rec;
+      let sessionFinalCount = 0; // นับ final ใน session นี้เพื่อป้องกัน replay
 
       rec.onresult = (e) => {
-        APP.rSpeechErrorCount = 0; // reset error count เมื่อได้ผล
+        APP.rSpeechErrorCount = 0;
         let interim = '';
         for (let i = e.resultIndex; i < e.results.length; i++) {
           const t = e.results[i][0].transcript;
           if (e.results[i].isFinal) {
-            APP.rSpeechFinal += t + ' ';
-            dbg('✅ final: "' + t + '"');
+            // ป้องกัน duplicate: เช็คว่า index นี้ append ไปแล้วหรือยัง
+            if (i >= sessionFinalCount) {
+              APP.rSpeechFinal += t + ' ';
+              sessionFinalCount = i + 1;
+              dbg('✅ final[' + i + ']: "' + t + '"');
+            }
           } else {
             interim += t;
           }
