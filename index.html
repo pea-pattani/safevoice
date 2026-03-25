@@ -692,7 +692,7 @@ body {
             <span></span><span></span><span></span><span></span>
           </div>
           <!-- Debug Panel — แสดงเฉพาะตอน test, ซ่อนได้ -->
-          <div id="r-debug-panel" style="display:none;margin:8px 0;">
+          <div id="r-debug-panel" style="display:block;margin:8px 0;">
             <div style="font-size:9px;color:var(--muted);letter-spacing:1.5px;margin-bottom:4px;display:flex;justify-content:space-between;">
               <span>DEBUG LOG</span>
               <span onclick="document.getElementById('r-debug-panel').style.display='none'" style="cursor:pointer;color:var(--red);">✕ ซ่อน</span>
@@ -1751,6 +1751,18 @@ function toggleDashHistory() {
 //  REPORT
 // ═══════════════════════════════════════════════
 function initReport() {
+  // ตรวจ browser support ตั้งแต่โหลด
+  setTimeout(() => {
+    const hasSR = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+    const hasMR = !!window.MediaRecorder;
+    const hasMic = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    dbg('=== Browser Check ===');
+    dbg('SpeechRecognition: ' + hasSR);
+    dbg('MediaRecorder: ' + hasMR);
+    dbg('getUserMedia: ' + hasMic);
+    dbg('IS_IOS: ' + IS_IOS);
+    dbg('UserAgent: ' + navigator.userAgent.slice(0,60));
+  }, 500);
   APP.rIsAnon = false; APP.rMode = 'voice'; APP.rRecording = false;
   APP.rTranscript = ''; APP.rPhotos = []; APP.rPhotosB64 = []; APP.rAiResult = null; APP.rElapsed = 0;
   APP.rSpeechFinal = ''; APP.rSpeechInterim = ''; APP.rSpeechRec = null;
