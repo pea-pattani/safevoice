@@ -35,7 +35,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--navy);color:var(--white);
 .tab-btn:hover{background:var(--card);color:var(--white);}
 .tab-btn.active{background:var(--card);color:var(--green);border:1px solid var(--border);}
 .tab-btn.active::before{content:'';position:absolute;left:0;top:25%;bottom:25%;width:3px;background:var(--green);border-radius:0 2px 2px 0;}
-.tab-icon{font-size:15px;flex-shrink:0;}
+.tab-icon{font-size:15px;flex-shrink:0;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;}
 .badge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center;}
 .badge.amber{background:var(--amber);color:#1a0a00;}
 
@@ -235,15 +235,15 @@ body{font-family:'Sarabun',sans-serif;background:var(--navy);color:var(--white);
   <!-- SIDEBAR -->
   <div class="sidebar">
     <div class="sb-section">OVERVIEW</div>
-    <button class="tab-btn active" id="t-dash"    onclick="go('dash')">  <span class="tab-icon">📊</span>Dashboard</button>
-    <button class="tab-btn"        id="t-verify"  onclick="go('verify')"><span class="tab-icon">✅</span>ยืนยันรายงาน<span class="badge" id="bdg-p" style="display:none">0</span></button>
+    <button class="tab-btn active" id="t-dash"    onclick="go('dash')">  <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>Dashboard</button>
+    <button class="tab-btn"        id="t-verify"  onclick="go('verify')"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg></span>ยืนยันรายงาน<span class="badge" id="bdg-p" style="display:none">0</span></button>
 
     <div class="sb-section">พนักงาน</div>
-    <button class="tab-btn" id="t-credits"  onclick="go('credits')"> <span class="tab-icon">⭐</span>Credits พนักงาน</button>
-    <button class="tab-btn" id="t-warnings" onclick="go('warnings')"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;vertical-align:middle"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>เพิ่มใบเตือน</button>
+    <button class="tab-btn" id="t-credits"  onclick="go('credits')"> <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>Credits พนักงาน</button>
+    <button class="tab-btn" id="t-warnings" onclick="go('warnings')"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>เพิ่มใบเตือน</button>
 
     <div class="sb-section">ระบบ</div>
-    <button class="tab-btn" id="t-users" onclick="go('users')"><span class="tab-icon">🔐</span>จัดการสิทธิ์</button>
+    <button class="tab-btn" id="t-users" onclick="go('users')"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>จัดการสิทธิ์</button>
   </div>
 
   <!-- CONTENT -->
