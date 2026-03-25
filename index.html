@@ -774,7 +774,16 @@ body {
 
         <div class="result-note" id="r-heinrich"></div>
       </div>
-      <button class="btn-primary" onclick="rSubmit()">✅ ส่งรายงาน</button>
+      <!-- High Risk Photo Warning -->
+      <div id="r-photo-required" style="display:none;background:#ef444418;border:1.5px solid #ef444466;border-radius:12px;padding:14px 16px;margin-bottom:12px;">
+        <div style="font-size:14px;font-weight:700;color:var(--red);margin-bottom:4px;">📷 ต้องแนบรูปภาพก่อนส่ง</div>
+        <div style="font-size:12px;color:var(--ice);line-height:1.6;">รายงานระดับ <strong style="color:var(--red)">High Risk</strong> จำเป็นต้องมีรูปถ่ายประกอบอย่างน้อย 1 รูป<br>เพื่อให้ จป. ตรวจสอบได้อย่างถูกต้อง</div>
+        <button onclick="document.querySelector('.photo-area')?.scrollIntoView({behavior:'smooth',block:'center'})"
+          style="margin-top:10px;width:100%;background:var(--red);border:none;border-radius:8px;padding:10px;color:#fff;font-family:'Sarabun',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">
+          📷 ไปถ่ายรูปเลย
+        </button>
+      </div>
+      <button class="btn-primary" id="r-submit-btn" onclick="rSubmit()">✅ ส่งรายงาน</button>
       <button class="btn-secondary" onclick="rReset()">↩ รายงานใหม่</button>
     </div>
 
@@ -2008,6 +2017,7 @@ function rHandlePhotos(e) {
   if (ph) ph.textContent = valid.length > 0
     ? `เลือกแล้ว ${valid.length} รูป — แตะเพื่อเปลี่ยน`
     : 'แตะเพื่อถ่ายรูปหรือเลือกจากคลัง';
+  rUpdatePhotoWarning();
 }
 
 // compress รูปก่อน preview + เก็บ base64
@@ -2076,6 +2086,7 @@ function rRemovePhoto(idx) {
   if (ph) ph.textContent = APP.rPhotos.length > 0
     ? `เลือกแล้ว ${APP.rPhotos.length} รูป — แตะเพื่อเปลี่ยน`
     : 'แตะเพื่อถ่ายรูปหรือเลือกจากคลัง';
+  rUpdatePhotoWarning();
 }
 
 // ═══════════════════════════════════════════════
@@ -2308,16 +2319,31 @@ function rShowResult(r) {
   const res = document.getElementById('r-ai-result');
   res.style.display = 'block';
   setTimeout(() => res.scrollIntoView({behavior:'smooth', block:'start'}), 100);
+
+  // High Risk warning — แสดงทันที + re-check เมื่อมีรูป
+  rUpdatePhotoWarning();
+}
+
+function rUpdatePhotoWarning() {
+  if (!APP.rAiResult) return;
+  const isHigh    = APP.rAiResult.risk_level === 'High';
+  const hasPhoto  = APP.rPhotos.length > 0;
+  const warning   = document.getElementById('r-photo-required');
+  const submitBtn = document.getElementById('r-submit-btn');
+  if (!warning || !submitBtn) return;
+  const needPhoto = isHigh && !hasPhoto;
+  warning.style.display   = needPhoto ? 'block' : 'none';
+  submitBtn.disabled       = needPhoto;
+  submitBtn.style.opacity  = needPhoto ? '0.4' : '1';
 }
 
 async function rSubmit() {
   const credits = APP.rIsAnon ? 0 : APP.rAiResult.credits;
   const input   = APP.rMode==='voice' ? APP.rTranscript : document.getElementById('r-text-input').value;
 
-  // ── ตรวจ High Risk ต้องมีรูป ──
+  // ── ตรวจ High Risk ต้องมีรูป (double-check กัน edge case) ──
   if (APP.rAiResult.risk_level === 'High' && APP.rPhotos.length === 0) {
-    showToast('⚠ รายงาน High Risk ต้องแนบรูปภาพอย่างน้อย 1 รูป', 'red');
-    document.querySelector('.photo-area')?.scrollIntoView({ behavior:'smooth', block:'center' });
+    rUpdatePhotoWarning();
     return;
   }
 
