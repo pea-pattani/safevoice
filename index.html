@@ -344,7 +344,7 @@ body {
   resize: vertical; min-height: 110px; outline: none; transition: border-color .2s;
 }
 .text-input:focus { border-color: var(--green); }
-.text-input::placeholder { color: var(--muted); }
+.text-input::placeholder { color: var(--muted); font-size: 12px; line-height: 1.6; }
 
 .photo-area {
   border: 2px dashed var(--border); border-radius: 12px; padding: 18px;
@@ -681,12 +681,12 @@ body {
 
     <!-- Recording Guide -->
     <div class="card" style="background:#0a2010;border-color:#00c96a33;padding:12px 16px;margin-bottom:0;border-radius:13px 13px 0 0;border-bottom:none;">
-      <div style="font-size:10px;font-weight:700;color:var(--green);letter-spacing:1.5px;margin-bottom:8px;">💡 พูดให้ครบ 4 ข้อ</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:5px;">
-        <div style="font-size:12px;color:var(--ice);"><span style="color:var(--green);font-weight:700;">ใคร</span> — คุณหรือเพื่อนร่วมงาน</div>
-        <div style="font-size:12px;color:var(--ice);"><span style="color:var(--green);font-weight:700;">ทำอะไร</span> — กำลังทำงานอะไรอยู่</div>
-        <div style="font-size:12px;color:var(--ice);"><span style="color:var(--green);font-weight:700;">ที่ไหน</span> — สถานที่ โซน หรือเสาหมายเลข</div>
-        <div style="font-size:12px;color:var(--ice);"><span style="color:var(--green);font-weight:700;">เกิดอะไร</span> — พบอะไรหรือเกือบเกิดอะไร</div>
+      <div style="font-size:10px;font-weight:700;color:var(--green);letter-spacing:1.5px;margin-bottom:10px;text-align:center;">💡 พูดให้ครบ 4 ข้อ</div>
+      <div style="display:flex;flex-direction:column;gap:5px;">
+        <div style="font-size:11px;color:var(--ice);text-align:center;"><span style="color:var(--green);font-weight:700;">ใคร</span> — คุณหรือเพื่อนร่วมงาน</div>
+        <div style="font-size:11px;color:var(--ice);text-align:center;"><span style="color:var(--green);font-weight:700;">ทำอะไร</span> — กำลังทำงานอะไรอยู่</div>
+        <div style="font-size:11px;color:var(--ice);text-align:center;"><span style="color:var(--green);font-weight:700;">ที่ไหน</span> — สถานที่ โซน หรือเสาหมายเลข</div>
+        <div style="font-size:11px;color:var(--ice);text-align:center;"><span style="color:var(--green);font-weight:700;">เกิดอะไร</span> — พบอะไรหรือเกือบเกิดอะไร</div>
       </div>
     </div>
 
