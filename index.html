@@ -679,10 +679,21 @@ body {
       <button class="mode-tab"        id="r-tab-text"  onclick="rSwitchMode('text')">✏️ พิมพ์ข้อความ</button>
     </div>
 
+    <!-- Recording Guide -->
+    <div class="card" style="background:#0a2010;border-color:#00c96a33;padding:12px 16px;margin-bottom:0;border-radius:13px 13px 0 0;border-bottom:none;">
+      <div style="font-size:10px;font-weight:700;color:var(--green);letter-spacing:1.5px;margin-bottom:8px;">💡 พูดให้ครบ 4 ข้อ</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+        <div style="font-size:12px;color:var(--ice);"><span style="color:var(--green);font-weight:700;">ใคร</span> — คุณหรือเพื่อนร่วมงาน</div>
+        <div style="font-size:12px;color:var(--ice);"><span style="color:var(--green);font-weight:700;">ทำอะไร</span> — กำลังทำงานอะไรอยู่</div>
+        <div style="font-size:12px;color:var(--ice);"><span style="color:var(--green);font-weight:700;">ที่ไหน</span> — สถานที่ โซน หรือเสาหมายเลข</div>
+        <div style="font-size:12px;color:var(--ice);"><span style="color:var(--green);font-weight:700;">เกิดอะไร</span> — พบอะไรหรือเกือบเกิดอะไร</div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5;">ตัวอย่าง: <span style="color:var(--ice);">"ผมกำลังขึ้นเสาโซน B หมู่ 3 พบว่าบันไดมีรอยร้าวที่ขั้นที่สาม"</span></div>
+    </div>
+
     <!-- Voice panel -->
     <div id="r-panel-voice">
-      <div class="card">
-        <div class="section-label">บันทึกเสียง (สูงสุด 30 วินาที)</div>
+      <div class="card" style="border-radius:0 0 13px 13px;border-top:none;">
         <div class="recorder-area">
           <div class="rec-status" id="r-rec-status">กดปุ่มด้านล่างเพื่อเริ่มบันทึก</div>
           <div class="timer" id="r-timer"></div>
@@ -702,10 +713,9 @@ body {
 
     <!-- Text panel -->
     <div id="r-panel-text" style="display:none;">
-      <div class="card">
-        <div class="section-label">อธิบายเหตุการณ์ที่พบ</div>
+      <div class="card" style="border-radius:0 0 13px 13px;border-top:none;">
         <textarea class="text-input" id="r-text-input" oninput="rCheckReady()"
-          placeholder="เช่น: พบบันไดอลูมิเนียมมีรอยร้าวที่ขั้นที่สาม ระหว่างงานติดตั้งหม้อแปลง..."></textarea>
+          placeholder="เช่น: ผมกำลังขึ้นเสาโซน B หมู่ 3 พบบันไดอลูมิเนียมมีรอยร้าวที่ขั้นที่สาม..."></textarea>
       </div>
     </div>
 
@@ -772,7 +782,7 @@ body {
           </div>
         </div>
 
-        <div class="result-note" id="r-heinrich"></div>
+        <div class="result-note" id="r-heinrich" style="display:none;"></div>
       </div>
       <!-- High Risk Photo Warning -->
       <div id="r-photo-required" style="display:none;background:#ef444418;border:1.5px solid #ef444466;border-radius:12px;padding:14px 16px;margin-bottom:12px;">
@@ -2200,7 +2210,7 @@ async function rAnalyze() {
       return;
     }
     // error อื่น (network, quota) → fallback demo
-    APP.rAiResult = { risk_level:'Medium', category:'อุปกรณ์ชำรุด', summary_th:'พบอุปกรณ์ชำรุดในพื้นที่ปฏิบัติงาน มีความเสี่ยงต่อความปลอดภัยพนักงาน', action:'หยุดใช้อุปกรณ์ทันทีและส่งซ่อม แจ้งหัวหน้างานภายใน 24 ชั่วโมง', credits:50, heinrich_note:'จัดอยู่ใน Unsafe Conditions ใน 300 Near Miss ที่ควรแก้ไขทันที', keywords:['อุปกรณ์','ชำรุด','พื้นที่ปฏิบัติงาน'], risk_keywords:['ชำรุด','เสียหาย'], confidence:78 };
+    APP.rAiResult = { risk_level:'Medium', category:'อุปกรณ์ชำรุด', summary_th:'พบอุปกรณ์ชำรุดในพื้นที่ปฏิบัติงาน มีความเสี่ยงต่อความปลอดภัยพนักงาน', action:'หยุดใช้อุปกรณ์ทันทีและส่งซ่อม แจ้งหัวหน้างานภายใน 24 ชั่วโมง', credits:50, keywords:['อุปกรณ์','ชำรุด','พื้นที่ปฏิบัติงาน'], risk_keywords:['ชำรุด','เสียหาย'], confidence:78 };
   } finally {
     document.getElementById('r-spinner').classList.remove('show');
     document.getElementById('r-analyze-txt').textContent = '🤖 วิเคราะห์ด้วย AI';
@@ -2247,7 +2257,6 @@ async function callClaude(text) {
   "summary_th": "สรุปสั้น 1 ประโยค",
   "action": "แนะนำการแก้ไข 1-2 ประโยค",
   "credits": 20,
-  "heinrich_note": "อธิบาย Heinrich 1 ประโยค",
   "keywords": ["คำสำคัญ1", "คำสำคัญ2", "คำสำคัญ3"],
   "risk_keywords": ["คำที่บ่งบอกความเสี่ยงสูง"],
   "confidence": 85
@@ -2272,11 +2281,10 @@ function rShowResult(r) {
   const ri = rMap[r.risk_level]||rMap.Low;
   const badge = document.getElementById('r-risk-badge');
   badge.className = `risk-badge ${ri.cls}`; badge.textContent = ri.lbl;
-  document.getElementById('r-category').textContent   = r.category;
-  document.getElementById('r-credits-val').textContent = `+${r.credits}`;
-  document.getElementById('r-summary').textContent    = r.summary_th;
-  document.getElementById('r-action').textContent     = r.action;
-  document.getElementById('r-heinrich').textContent   = `📊 ${r.heinrich_note}`;
+  document.getElementById('r-category').textContent    = r.category;
+  document.getElementById('r-credits-val').textContent  = `+${r.credits}`;
+  document.getElementById('r-summary').textContent      = r.summary_th;
+  document.getElementById('r-action').textContent       = r.action;
 
   // Quality Badge
   if (APP.rQualityResult) {
@@ -2373,7 +2381,7 @@ async function rSubmit() {
 
   // ── payload ตรงกับ schema near_miss_reports 100% ──
   // columns: id, report_code, employee_id(uuid), is_anonymous, report_text,
-  //          risk_level, category, ai_summary, ai_action, ai_heinrich,
+  //          risk_level, category, ai_summary, ai_action,
   //          credits_given, photo_count, location_note, status,
   //          verified_by, verified_at, reject_reason, created_at, updated_at
   const isRealUUID = APP.loggedUser?.id && APP.loggedUser.id !== APP.loggedUser.emp_code;
@@ -2386,12 +2394,9 @@ async function rSubmit() {
     category:      APP.rAiResult.category,
     ai_summary:    APP.rAiResult.summary_th,
     ai_action:     APP.rAiResult.action,
-    ai_heinrich:   APP.rAiResult.heinrich_note,
     credits_given: credits,
     photo_count:   APP.rPhotos.length,
     status:        'pending'
-    // ❌ ไม่ส่ง emp_code  — ไม่มีใน schema
-    // ❌ ไม่ส่ง photo_urls — ไม่มีใน schema
   };
 
   // บันทึกลง Supabase (async, ไม่ block UI)
