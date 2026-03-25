@@ -402,7 +402,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--navy);color:var(--white);
       <div class="card">
         <div class="section-label">➕ เพิ่มพนักงานใหม่</div>
         <div class="form-grid">
-          <div class="fg" style="margin:0"><label class="fl">รหัสพนักงาน</label><input class="fi" id="u-code" placeholder="เช่น EMP-5566"></div>
+          <div class="fg" style="margin:0"><label class="fl">รหัสพนักงาน</label><input class="fi" id="u-code" placeholder="เช่น 278629"></div>
           <div class="fg" style="margin:0"><label class="fl">ชื่อ-นามสกุล</label><input class="fi" id="u-name" placeholder="นายสมชาย มั่นคง"></div>
           <div class="fg" style="margin:0"><label class="fl">แผนก</label><input class="fi" id="u-dept" placeholder="งานบำรุงรักษา..."></div>
           <div class="fg" style="margin:0"><label class="fl">สิทธิ์</label>
@@ -412,7 +412,9 @@ body{font-family:'Sarabun',sans-serif;background:var(--navy);color:var(--white);
               <option value="manager">ผู้จัดการ</option>
             </select>
           </div>
+          <div class="fg" style="margin:0"><label class="fl">รหัสผ่านเริ่มต้น</label><input class="fi" id="u-pw" type="text" value="1234" placeholder="1234"></div>
         </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">⚠️ ข้อมูลจะถูกบันทึกเข้า Supabase ทันที — แจ้งรหัสผ่านให้พนักงานเปลี่ยนเมื่อ login ครั้งแรก</div>
         <button class="btn-prim" onclick="addUser()">➕ เพิ่มพนักงาน</button>
       </div>
       <div class="section-label">รายชื่อพนักงานในระบบ</div>
@@ -907,11 +909,44 @@ async function doRej(id){
   showToast(`✗ ปฏิเสธ ${id}`,'red');
 }
 async function doBonus(id,bon){
-  const r=DB.reports.find(x=>x.id===id);if(!r)return;
-  const e=DB.employees.find(x=>x.id===r.emp_id);if(e)e.credits+=bon;
-  r.status='resolved';renderVerify();renderCredits();
-  await sbPatch('near_miss_reports', r._uuid, {status:'resolved'});
-  showToast(`🔧 Bonus +${bon} → ${r.emp_name}`);
+  const r=DB.reports.find(x=>x.id===id); if(!r)return;
+  const e=DB.employees.find(x=>x.id===r.emp_id);
+
+  // 1) patch report status → resolved
+  if(r._uuid && !r._uuid.startsWith('demo-')){
+    await sbPatch('near_miss_reports', r._uuid, {status:'resolved'});
+  }
+
+  // 2) บวก bonus credits ให้ employee ใน Supabase
+  if(e && e._uuid){
+    const newCredits = (e.credits||0) + bon;
+    const ok = await sbPatch('employees', e._uuid, {credits: newCredits});
+    if(ok){
+      e.credits = newCredits;
+      // บันทึก credit_transactions
+      try {
+        await fetch(`${SB_URL}/rest/v1/credit_transactions`,{
+          method:'POST',
+          headers:{...sbHeaders,'Prefer':'return=minimal'},
+          body:JSON.stringify({
+            employee_id:   e._uuid,
+            type:          'earn',
+            amount:        bon,
+            balance_after: newCredits,
+            description:   `Bonus แก้ไขแล้ว ${r.id}`,
+            report_id:     r._uuid||null
+          })
+        });
+      } catch(err){ console.warn('bonus tx error:',err.message); }
+    }
+  } else if(e){
+    // demo / hardcode — อัปเดต local เท่านั้น
+    e.credits = (e.credits||0) + bon;
+  }
+
+  r.status='resolved';
+  renderVerify(); renderCredits();
+  showToast(`🔧 Bonus +${bon} Credits → ${r.emp_name}`);
 }
 
 // ══ CREDITS ══
@@ -1038,16 +1073,63 @@ function renderWarnHist(){
 }
 
 // ══ USERS ══
-function addUser(){
-  const code=document.getElementById('u-code').value.trim();
-  const name=document.getElementById('u-name').value.trim();
-  const dept=document.getElementById('u-dept').value.trim();
-  const role=document.getElementById('u-role').value;
-  if(!code||!name){showToast('กรุณากรอกรหัสและชื่อพนักงาน','amber');return;}
-  if(DB.employees.find(e=>e.id===code)){showToast('รหัสพนักงานซ้ำในระบบ','red');return;}
-  DB.employees.push({id:code,name,dept,role,credits:0,redeems:0});
-  document.getElementById('u-code').value='';document.getElementById('u-name').value='';document.getElementById('u-dept').value='';
-  renderUsers();fillEmpDD();renderCredits();showToast(`✅ เพิ่มพนักงาน ${name} แล้ว`);
+async function addUser(){
+  const code = document.getElementById('u-code').value.trim();
+  const name = document.getElementById('u-name').value.trim();
+  const dept = document.getElementById('u-dept').value.trim();
+  const role = document.getElementById('u-role').value;
+  const pw   = document.getElementById('u-pw')?.value.trim() || '1234';
+
+  if(!code||!name){ showToast('กรุณากรอกรหัสและชื่อพนักงาน','amber'); return; }
+  if(DB.employees.find(e=>e.id===code)){ showToast('รหัสพนักงานซ้ำในระบบ','red'); return; }
+
+  const btn = document.querySelector('#p-users .btn-prim');
+  if(btn){ btn.disabled=true; btn.textContent='⌛ กำลังบันทึก...'; }
+
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/employees`, {
+      method: 'POST',
+      headers: { ...sbHeaders, 'Prefer': 'return=representation' },
+      body: JSON.stringify({
+        emp_code:     code,
+        full_name:    name,
+        department:   dept || null,
+        role:         role,
+        password_hash: pw,
+        credits:      0,
+        total_redeems: 0
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(()=>({}));
+      // ตรวจ duplicate key ของ emp_code
+      if (err.code === '23505' || (err.message||'').includes('duplicate')) {
+        showToast('❌ รหัสพนักงานนี้มีอยู่ใน Supabase แล้ว', 'red');
+      } else {
+        showToast(`❌ บันทึกไม่สำเร็จ: ${err.message || res.status}`, 'red');
+      }
+      return;
+    }
+
+    const inserted = await res.json();
+    const newUUID  = inserted?.[0]?.id || null;
+
+    // เพิ่มเข้า local state พร้อม _uuid จริง
+    DB.employees.push({ id:code, _uuid:newUUID, name, dept, role, credits:0, redeems:0 });
+    document.getElementById('u-code').value='';
+    document.getElementById('u-name').value='';
+    document.getElementById('u-dept').value='';
+    if(document.getElementById('u-pw')) document.getElementById('u-pw').value='1234';
+    renderUsers(); fillEmpDD(); renderCredits();
+    showToast(`✅ เพิ่มพนักงาน ${name} (${code}) เข้า Supabase แล้ว`);
+
+  } catch(e) {
+    console.error('addUser error:', e.message);
+    showToast('❌ เกิดข้อผิดพลาด: ' + e.message, 'red');
+  } finally {
+    if(btn){ btn.disabled=false; btn.textContent='➕ เพิ่มพนักงาน'; }
+  }
 }
 function renderUsers(){
   const rl={employee:'พนักงาน',safety_officer:'จป.',manager:'ผู้จัดการ'};
@@ -1064,11 +1146,21 @@ function renderUsers(){
       </div></td>
     </tr>`).join('');
 }
-function toggleRole(id){
-  const e=DB.employees.find(x=>x.id===id);if(!e)return;
+async function toggleRole(id){
+  const e=DB.employees.find(x=>x.id===id); if(!e)return;
   const rs=['employee','safety_officer','manager'];
-  e.role=rs[(rs.indexOf(e.role)+1)%rs.length];
-  renderUsers();showToast(`🔄 ${e.name} → ${e.role}`);
+  const newRole=rs[(rs.indexOf(e.role)+1)%rs.length];
+
+  if (e._uuid) {
+    const res = await fetch(`${SB_URL}/rest/v1/employees?id=eq.${e._uuid}`, {
+      method: 'PATCH',
+      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ role: newRole })
+    });
+    if (!res.ok) { showToast('❌ เปลี่ยน role ไม่สำเร็จ','red'); return; }
+  }
+  e.role = newRole;
+  renderUsers(); showToast(`🔄 ${e.name} → ${newRole}`);
 }
 function openReset(id,name){
   APP.pendingReset=id;
@@ -1077,10 +1169,37 @@ function openReset(id,name){
   const m=document.getElementById('m-reset');
   m.style.display='flex';setTimeout(()=>m.classList.add('show'),10);
 }
-function confirmReset(){
-  const pw=document.getElementById('m-pw').value.trim();
-  if(!pw){showToast('กรุณาตั้งรหัสผ่าน','amber');return;}
-  closeModal();showToast(`✅ รีเซ็ต ${APP.pendingReset} → "${pw}" แล้ว`);APP.pendingReset=null;
+async function confirmReset(){
+  const pw = document.getElementById('m-pw').value.trim();
+  if(!pw){ showToast('กรุณาตั้งรหัสผ่าน','amber'); return; }
+
+  const empCode = APP.pendingReset;
+  const emp = DB.employees.find(e => e.id === empCode);
+
+  // ── Patch password_hash ใน Supabase ──
+  if (emp?._uuid) {
+    try {
+      const res = await fetch(`${SB_URL}/rest/v1/employees?id=eq.${emp._uuid}`, {
+        method: 'PATCH',
+        headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ password_hash: pw })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(()=>({}));
+        showToast(`❌ รีเซ็ตไม่สำเร็จ: ${err.message || res.status}`, 'red');
+        return;
+      }
+    } catch(e) {
+      showToast('❌ เกิดข้อผิดพลาด: ' + e.message, 'red');
+      return;
+    }
+  } else {
+    showToast('⚠️ ไม่พบ UUID — รีเซ็ตได้เฉพาะใน local (ไม่กระทบ Supabase)', 'amber');
+  }
+
+  closeModal();
+  showToast(`✅ รีเซ็ตรหัสผ่าน ${empCode} เป็น "${pw}" แล้ว`);
+  APP.pendingReset = null;
 }
 function closeModal(){
   const m=document.getElementById('m-reset');m.classList.remove('show');setTimeout(()=>m.style.display='none',300);
