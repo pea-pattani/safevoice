@@ -1898,7 +1898,10 @@ function rInitWebSpeechLive() {
   APP.rSpeechFinal      = '';
   APP.rSpeechInterim    = '';
   APP.rSpeechErrorCount = 0;
-  APP.rSpeechFinalIdx   = 0; // track result index สุดท้ายที่ append แล้ว
+
+  function normalize(t) {
+    return t.trim().replace(/\s+/g, ' ');
+  }
 
   function startRec() {
     if (!APP.rRecording) return;
@@ -1909,19 +1912,27 @@ function rInitWebSpeechLive() {
       rec.interimResults  = true;
       rec.maxAlternatives = 1;
       APP.rSpeechRec = rec;
-      let sessionFinalCount = 0; // นับ final ใน session นี้เพื่อป้องกัน replay
+
+      // snapshot ของ final ก่อน session นี้เริ่ม — ใช้เช็ค duplicate
+      const baselineText = normalize(APP.rSpeechFinal);
+      let sessionAppended = ''; // สิ่งที่ append ใน session นี้แล้ว
 
       rec.onresult = (e) => {
         APP.rSpeechErrorCount = 0;
         let interim = '';
         for (let i = e.resultIndex; i < e.results.length; i++) {
-          const t = e.results[i][0].transcript;
+          const t = normalize(e.results[i][0].transcript);
+          if (!t) continue;
           if (e.results[i].isFinal) {
-            // ป้องกัน duplicate: เช็คว่า index นี้ append ไปแล้วหรือยัง
-            if (i >= sessionFinalCount) {
+            // เช็คว่าข้อความนี้อยู่ใน baseline หรือ sessionAppended แล้วหรือยัง
+            const alreadyInBase    = baselineText.includes(t);
+            const alreadyInSession = sessionAppended.includes(t);
+            if (!alreadyInBase && !alreadyInSession) {
               APP.rSpeechFinal += t + ' ';
-              sessionFinalCount = i + 1;
-              dbg('✅ final[' + i + ']: "' + t + '"');
+              sessionAppended  += t + ' ';
+              dbg('✅ append: "' + t + '"');
+            } else {
+              dbg('⛔ skip dup: "' + t + '"');
             }
           } else {
             interim += t;
