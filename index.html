@@ -659,7 +659,7 @@ body {
   <div class="topbar">
     <div class="logo">
       <div class="logo-icon green">🎙</div>
-      <div><div class="logo-name">รายงาน Near Miss</div><div class="logo-sub">ทุกรายงานคือการป้องกันอุบัติเหตุ</div></div>
+      <div><div class="logo-name">รายงาน Near Miss</div><div class="logo-sub">ข้อมูลของท่านเก็บเป็นความลับ</div></div>
     </div>
     <div style="font-size:11px;color:var(--muted);font-family:monospace;" id="r-emp-badge">—</div>
   </div>
@@ -755,6 +755,10 @@ body {
     </div>
 
     <div id="r-ai-result" style="display:none;" class="fade-up">
+      <!-- Demo mode banner — แสดงเฉพาะตอนยังไม่มี API Key (Admin เห็น, พนักงานไม่สับสน) -->
+      <div id="r-demo-banner" style="display:none;background:#f59e0b18;border:1px solid #f59e0b55;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:12px;color:var(--amber);">
+        ⚠ ผลวิเคราะห์นี้เป็นตัวอย่าง — Admin ยังไม่ได้ตั้งค่า Claude API Key
+      </div>
       <div class="result-card">
         <div class="result-header">
           <div class="result-ai-lbl">AI ANALYSIS RESULT</div>
@@ -1135,6 +1139,7 @@ const APP = {
   rSpeechRec:  null,
   rSpeechFinal:'',
   rAiResult:   null,
+  rAiDemoMode: false,
   // Credits
   cPendingWarningId: null,
   // Admin
@@ -1763,7 +1768,7 @@ function toggleDashHistory() {
 function initReport() {
 
   APP.rIsAnon = false; APP.rMode = 'voice'; APP.rRecording = false;
-  APP.rTranscript = ''; APP.rPhotos = []; APP.rPhotosB64 = []; APP.rAiResult = null; APP.rElapsed = 0;
+  APP.rTranscript = ''; APP.rPhotos = []; APP.rPhotosB64 = []; APP.rAiResult = null; APP.rAiDemoMode = false; APP.rElapsed = 0;
   APP.rSpeechFinal = ''; APP.rSpeechInterim = ''; APP.rSpeechRec = null;
   clearInterval(APP.rTimerInt);
   document.getElementById('r-emp-badge').textContent = APP.loggedUser?.emp_code || '—';
@@ -2193,24 +2198,11 @@ async function rAnalyze() {
 
   try {
     APP.rAiResult = await callClaude(input);
+    APP.rAiDemoMode = false;
   } catch(err) {
-    if (err.message === 'no_key') {
-      // ยังไม่ได้ตั้งค่า API Key — แสดง error ชัดเจน
-      document.getElementById('r-spinner').classList.remove('show');
-      document.getElementById('r-analyze-txt').textContent = '🤖 วิเคราะห์ด้วย AI';
-      document.getElementById('r-analyze-btn').disabled = false;
-      document.getElementById('r-ai-result').style.display = 'block';
-      document.getElementById('r-ai-result').innerHTML = `
-        <div style="background:#ef444415;border:1px solid #ef444455;border-radius:12px;padding:16px 18px;text-align:center;">
-          <div style="font-size:22px;margin-bottom:8px;">🔑</div>
-          <div style="font-size:14px;font-weight:700;color:var(--red);margin-bottom:6px;">ยังไม่ได้ตั้งค่า Claude API Key</div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">กรุณาให้ Admin ไปตั้งค่า API Key ที่<br><strong>Admin Panel → ตั้งค่าระบบ</strong></div>
-          <div style="font-size:11px;color:var(--muted);">หากยังไม่มี Key สามารถขอได้ที่ console.anthropic.com</div>
-        </div>`;
-      return;
-    }
-    // error อื่น (network, quota) → fallback demo
+    // ทั้ง no_key และ error อื่น → fallback demo เสมอ
     APP.rAiResult = { risk_level:'Medium', category:'อุปกรณ์ชำรุด', summary_th:'พบอุปกรณ์ชำรุดในพื้นที่ปฏิบัติงาน มีความเสี่ยงต่อความปลอดภัยพนักงาน', action:'หยุดใช้อุปกรณ์ทันทีและส่งซ่อม แจ้งหัวหน้างานภายใน 24 ชั่วโมง', credits:50, keywords:['อุปกรณ์','ชำรุด','พื้นที่ปฏิบัติงาน'], risk_keywords:['ชำรุด','เสียหาย'], confidence:78 };
+    APP.rAiDemoMode = true;
   } finally {
     document.getElementById('r-spinner').classList.remove('show');
     document.getElementById('r-analyze-txt').textContent = '🤖 วิเคราะห์ด้วย AI';
@@ -2325,6 +2317,11 @@ function rShowResult(r) {
 
   document.getElementById('r-analyze-section').style.display = 'none';
   const res = document.getElementById('r-ai-result');
+
+  // banner เตือน demo mode (ซ่อนไม่ให้พนักงานงง แต่แจ้ง Admin)
+  const demoEl = document.getElementById('r-demo-banner');
+  if (demoEl) demoEl.style.display = APP.rAiDemoMode ? 'block' : 'none';
+
   res.style.display = 'block';
   setTimeout(() => res.scrollIntoView({behavior:'smooth', block:'start'}), 100);
 
