@@ -1254,6 +1254,8 @@ function loginWithDemo(id, pw) {
     // ══ Admin ══
     '416146': {name:'นายอนัน รัตนวรรณ',dept:'กฟจ.ปัตตานี',role:'safety_officer',credits:0,redeems:0},
     '416146@pea-pattani.local': {name:'นายอนัน รัตนวรรณ',dept:'กฟจ.ปัตตานี',role:'safety_officer',credits:0,redeems:0},
+    // ══ Demo Admin — สำหรับนำเสนอ ลบออกได้หลัง demo ══
+    'demo-admin': {name:'Demo Admin',dept:'กฟจ.ปัตตานี',role:'safety_officer',credits:0,redeems:0},
     '449602': {name:'นายสัญญา ชื่นบาน',dept:'กฟจ.ปัตตานี',role:'employee',credits:0,redeems:0},
     '449602@pea-pattani.local': {name:'นายสัญญา ชื่นบาน',dept:'กฟจ.ปัตตานี',role:'employee',credits:0,redeems:0},
     '427498': {name:'นายชินวุธ โรจนปฏิภาณ',dept:'กฟจ.ปัตตานี',role:'employee',credits:0,redeems:0},
@@ -1478,6 +1480,7 @@ function afterLogin(role) {
     try {
       const sess = JSON.parse(sessionStorage.getItem('sv_session')||'{}');
       sess.user_name = APP.loggedUser.name;
+      sess.emp_code  = APP.loggedUser.emp_code || APP.loggedUser.id;
       sessionStorage.setItem('sv_session', JSON.stringify(sess));
     } catch {}
     location.href = 'admin.html';
