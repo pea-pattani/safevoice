@@ -692,6 +692,11 @@ const DB = {
 };
 const APP={vf:'pending',pendingReset:null};
 
+// ══ DEMO MODE — สำหรับนำเสนอ ══
+// login ด้วยรหัส "demo-admin" → ใช้ DEMO_REPORTS ทั้งหมด ไม่แตะ Supabase
+const DEMO_ADMIN_CODE = 'demo-admin';
+let DEMO_MODE = false;
+
 // ══ SUPABASE CONFIG ══
 const SB_URL = 'https://kgcnuelqgawslfcfzdcd.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtnY251ZWxxZ2F3c2xmY2Z6ZGNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNDg1NzgsImV4cCI6MjA4OTgyNDU3OH0.xlVn5RYNgfHf87tUYyMyMJWIGvLCD085y1g3EMEAf-Q';
@@ -764,17 +769,35 @@ async function sbPatch(table, uuid, data) {
 
 // ══ INIT ══
 document.addEventListener('DOMContentLoaded', async () => {
-  showToast('⌛ กำลังโหลดข้อมูล...', 'amber');
+  // ตรวจ demo-admin — จาก sessionStorage หรือ URL param ?demo=1
+  try {
+    const sess = JSON.parse(sessionStorage.getItem('sv_session') || '{}');
+    if (sess.emp_code === DEMO_ADMIN_CODE || sess.user_name === 'Demo Admin') DEMO_MODE = true;
+  } catch(_) {}
+  if (new URLSearchParams(location.search).get('demo') === '1') DEMO_MODE = true;
+
+  showToast(DEMO_MODE ? '🎬 Demo Mode — ใช้ข้อมูลจำลอง' : '⌛ กำลังโหลดข้อมูล...', DEMO_MODE ? 'green' : 'amber');
   await loadEmployees();
   await loadReports();
   await loadWarnings();
   renderDash(); renderVerify(); renderCredits(); renderWarnHist(); renderUsers(); fillEmpDD(); updateBadge(); anRenderAll();
   showToast('✅ โหลดข้อมูลสำเร็จ');
+
+  if (DEMO_MODE) {
+    const tb = document.querySelector('.topbar .tb-right');
+    if (tb) {
+      const badge = document.createElement('div');
+      badge.style.cssText = 'font-size:11px;font-weight:700;background:#00c96a22;border:1px solid #00c96a55;color:#00C96A;border-radius:8px;padding:4px 10px;margin-right:4px;';
+      badge.textContent = '🎬 DEMO MODE';
+      tb.prepend(badge);
+    }
+  }
 });
 
 // โหลด employees จาก Supabase — ได้ทั้ง UUID (id) และ emp_code
 // เก็บใน DB.employees แทน hardcode เดิม
 async function loadEmployees() {
+  if (DEMO_MODE) { console.log('🎬 Demo: using hardcoded employees'); return; }
   try {
     const rows = await sbGet('employees', 'select=id,emp_code,full_name,department,role,credits,total_redeems');
     if (rows && rows.length > 0) {
@@ -800,6 +823,7 @@ async function loadEmployees() {
 // ══ loadReports: ดึง near_miss_reports อย่างเดียว (ไม่ join)
 // resolve ชื่อพนักงานจาก DB.employees โดยใช้ _uuid ที่โหลดมาแล้ว
 async function loadReports() {
+  if (DEMO_MODE) { DB.reports = [...DEMO_REPORTS]; console.log('🎬 Demo: using DEMO_REPORTS'); return; }
   try {
     const rows = await sbGet('near_miss_reports', 'select=*');
     if (rows && rows.length > 0) {
@@ -958,12 +982,12 @@ async function doVer(id){
   const r=DB.reports.find(x=>x.id===id); if(!r) return;
   const today = new Date().toISOString();
 
-  if(!r._uuid || r._uuid.startsWith('demo-')){
-    r.status='verified'; r.verified_date=today.split('T')[0]; r.verified_by='จป.';
+  if(DEMO_MODE || !r._uuid || r._uuid.startsWith('demo-')){
+    r.status='verified'; r.verified_date=today.split('T')[0]; r.verified_by='Demo Admin';
     const e=DB.employees.find(x=>x.id===r.emp_id);
     if(e&&!r.is_anon) e.credits += r.credits;
     renderVerify(); renderDash(); renderCredits(); updateBadge();
-    showToast(`✅ ยืนยัน ${id} (demo) — +${r.credits} Credits`);
+    showToast(`✅ ยืนยัน ${id} — +${r.credits} Credits`);
     return;
   }
 
@@ -1020,10 +1044,10 @@ async function doRej(id){
   const r=DB.reports.find(x=>x.id===id); if(!r) return;
 
   // ถ้าเป็น demo data → อัปเดตแค่ local state
-  if(!r._uuid || r._uuid.startsWith('demo-')){
+  if(DEMO_MODE || !r._uuid || r._uuid.startsWith('demo-')){
     r.status='rejected'; r.reject_reason=reason;
     renderVerify(); renderDash(); updateBadge();
-    showToast(`✗ ปฏิเสธ ${id} (demo)`,'red');
+    showToast(`✗ ปฏิเสธ ${id}`,'red');
     return;
   }
 
@@ -1159,6 +1183,7 @@ document.addEventListener('click', e => {
 });
 // ══ โหลด warnings จาก Supabase ══
 async function loadWarnings() {
+  if (DEMO_MODE) { console.log('🎬 Demo: using hardcoded warnings'); return; }
   try {
     const rows = await sbGet('warnings', 'select=*');
     if (rows && rows.length > 0) {
@@ -1184,6 +1209,20 @@ async function loadWarnings() {
 }
 async function submitWarning(){
   const empId=document.getElementById('w-emp').value;
+  // DEMO_MODE — local only, ไม่ส่ง Supabase
+  if (DEMO_MODE) {
+    const issue=document.getElementById('w-issue').value.trim();
+    const cnt=parseInt(document.getElementById('w-cnt').value)||1;
+    if (!empId||!issue) { showToast('กรุณากรอกข้อมูลให้ครบ','red'); return; }
+    const emp=DB.employees.find(e=>e.id===empId);
+    const today=new Date().toISOString().split('T')[0];
+    const wid='W-DEMO-'+Date.now().toString(36).toUpperCase().slice(-4);
+    DB.warnings.unshift({id:wid,_uuid:wid,emp_id:empId,emp_name:emp?.name||empId,date:today,issue,impact:`ใบเตือนครั้งที่ ${cnt}`,status:'active'});
+    document.getElementById('w-issue').value=''; wClearEmp();
+    renderWarnHist(); renderCredits();
+    showToast(`⚠ (Demo) ออกใบเตือน ${wid} ให้ ${emp?.name||empId}`,'amber');
+    return;
+  }
   const issue=document.getElementById('w-issue').value.trim();
   const cnt=parseInt(document.getElementById('w-cnt').value)||1;
   if(!empId){showToast('กรุณาเลือกพนักงาน','amber');return;}
