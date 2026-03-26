@@ -2192,12 +2192,15 @@ async function rAnalyze() {
   document.getElementById('r-analyze-txt').textContent = 'AI กำลังวิเคราะห์...';
   document.getElementById('r-analyze-btn').disabled = true;
 
+  const photoCount = APP.rPhotos.length;
   try {
-    APP.rAiResult = await callClaude(input);
+    APP.rAiResult = await callClaude(input, APP.rMode, photoCount);
     APP.rAiDemoMode = false;
   } catch(err) {
     // ทั้ง no_key และ error อื่น → fallback demo เสมอ
-    APP.rAiResult = { risk_level:'Medium', category:'อุปกรณ์ชำรุด', summary_th:'พบอุปกรณ์ชำรุดในพื้นที่ปฏิบัติงาน มีความเสี่ยงต่อความปลอดภัยพนักงาน', action:'หยุดใช้อุปกรณ์ทันทีและส่งซ่อม แจ้งหัวหน้างานภายใน 24 ชั่วโมง', credits:50, keywords:['อุปกรณ์','ชำรุด','พื้นที่ปฏิบัติงาน'], risk_keywords:['ชำรุด','เสียหาย'], confidence:78 };
+    // confidence ปรับตาม context จริง: เสียงหัก 10, ไม่มีรูปหัก 5
+    const demoConf = 78 - (APP.rMode === 'voice' ? 10 : 0) - (photoCount === 0 ? 5 : 0);
+    APP.rAiResult = { risk_level:'Medium', category:'อุปกรณ์ชำรุด', summary_th:'พบอุปกรณ์ชำรุดในพื้นที่ปฏิบัติงาน มีความเสี่ยงต่อความปลอดภัยพนักงาน', action:'หยุดใช้อุปกรณ์ทันทีและส่งซ่อม แจ้งหัวหน้างานภายใน 24 ชั่วโมง', credits:50, keywords:['อุปกรณ์','ชำรุด','พื้นที่ปฏิบัติงาน'], risk_keywords:['ชำรุด','เสียหาย'], confidence: demoConf };
     APP.rAiDemoMode = true;
   } finally {
     document.getElementById('r-spinner').classList.remove('show');
@@ -2230,9 +2233,13 @@ async function rAnalyze() {
   }
 }
 
-async function callClaude(text) {
+async function callClaude(text, mode, photoCount) {
   const key = CFG.CLAUDE_KEY;
   if (!key || !key.startsWith('sk-ant')) throw new Error('no_key');
+  const modeLabel    = mode === 'voice' ? 'เสียง (transcribed)' : 'ข้อความ';
+  const photoContext = photoCount > 0
+    ? `มีรูปประกอบ ${photoCount} รูป`
+    : 'ไม่มีรูปประกอบ';
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method:'POST',
     headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
@@ -2252,8 +2259,11 @@ async function callClaude(text) {
 เกณฑ์ credits: Low=20, Medium=50, High=100
 keywords: คำสำคัญ 2-4 คำที่ AI ใช้ในการวิเคราะห์จากข้อความ เช่น ชื่ออุปกรณ์ สถานที่ การกระทำ
 risk_keywords: คำหรือวลีที่บ่งบอกความเสี่ยงโดยตรง เช่น "รอยร้าว" "ไม่มีป้าย" "ทำงานบนที่สูง" (ถ้าไม่มีให้ส่ง [])
-confidence: ความมั่นใจในการวิเคราะห์ 0-100 คิดจากความชัดเจนของข้อมูลที่ได้รับ`,
-      messages:[{role:'user', content:`Near Miss: "${text}"`}]
+confidence: ความมั่นใจในการวิเคราะห์ 0-100 — ปรับตามบริบท:
+  - input จากเสียง (transcribed): หักสูงสุด 10 คะแนน เพราะอาจฟังผิดหรือขาดคำ
+  - ไม่มีรูปประกอบ + High Risk: หัก 5-10 คะแนน เพราะขาดหลักฐานยืนยัน
+  - ข้อมูลชัดเจนครบถ้วน: ให้เต็ม`,
+      messages:[{role:'user', content:`Near Miss [${modeLabel}, ${photoContext}]: "${text}"`}]
     })
   });
   const data = await res.json();
