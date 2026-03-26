@@ -1899,23 +1899,17 @@ function rInitWebSpeechLive() {
   APP.rSpeechInterim    = '';
   APP.rSpeechErrorCount = 0;
 
-  function normalize(t) {
-    return t.trim().replace(/\s+/g, ' ');
-  }
+  function normalize(t) { return t.trim().replace(/\s+/g, ' '); }
 
   function startRec() {
     if (!APP.rRecording) return;
     try {
       const rec = new SR();
       rec.lang            = 'th-TH';
-      rec.continuous      = true;
+      rec.continuous      = false;  // false = browser ไม่ replay result เก่าตอน restart
       rec.interimResults  = true;
       rec.maxAlternatives = 1;
       APP.rSpeechRec = rec;
-
-      // snapshot ของ final ก่อน session นี้เริ่ม — ใช้เช็ค duplicate
-      const baselineText = normalize(APP.rSpeechFinal);
-      let sessionAppended = ''; // สิ่งที่ append ใน session นี้แล้ว
 
       rec.onresult = (e) => {
         APP.rSpeechErrorCount = 0;
@@ -1924,16 +1918,8 @@ function rInitWebSpeechLive() {
           const t = normalize(e.results[i][0].transcript);
           if (!t) continue;
           if (e.results[i].isFinal) {
-            // เช็คว่าข้อความนี้อยู่ใน baseline หรือ sessionAppended แล้วหรือยัง
-            const alreadyInBase    = baselineText.includes(t);
-            const alreadyInSession = sessionAppended.includes(t);
-            if (!alreadyInBase && !alreadyInSession) {
-              APP.rSpeechFinal += t + ' ';
-              sessionAppended  += t + ' ';
-              dbg('✅ append: "' + t + '"');
-            } else {
-              dbg('⛔ skip dup: "' + t + '"');
-            }
+            APP.rSpeechFinal += t + ' ';
+            dbg('✅ append: "' + t + '"');
           } else {
             interim += t;
           }
@@ -1949,26 +1935,20 @@ function rInitWebSpeechLive() {
       rec.onerror = (e) => {
         dbg('⚠ Speech error: ' + e.error);
         if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-          APP.rSpeechRec = null;
-          return;
+          APP.rSpeechRec = null; return;
         }
-        // network error — นับ และ restart ใหม่
-        if (e.error === 'network') {
-          APP.rSpeechErrorCount++;
-        }
-        // no-speech / aborted — ปกติ ไม่นับ
+        if (e.error === 'network') APP.rSpeechErrorCount++;
       };
 
       rec.onend = () => {
-        // ถ้ายังบันทึกอยู่และ error ไม่เกิน 5 ครั้ง → restart ทันที
+        APP.rSpeechInterim = ''; // clear interim ทุกครั้งที่ session จบ
         if (APP.rRecording && APP.rSpeechErrorCount < 5) {
-          // delay เล็กน้อยก่อน restart ป้องกัน rapid loop
-          setTimeout(startRec, 100);
+          setTimeout(startRec, 150); // restart — instance ใหม่ = ไม่มี result เก่า
         }
       };
 
       rec.start();
-      dbg('▶ Web Speech started');
+      dbg('▶ Web Speech started (continuous:false)');
     } catch(e) {
       dbg('❌ Web Speech start failed: ' + e.message);
       APP.rSpeechRec = null;
