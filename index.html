@@ -2402,6 +2402,7 @@ async function rSubmit() {
     ai_action:     APP.rAiResult.action,
     credits_given: credits,
     photo_count:   APP.rPhotos.length,
+    photo_urls:    photoUrls.filter(Boolean),
     status:        'pending'
   };
 
