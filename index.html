@@ -2370,7 +2370,7 @@ async function rSubmit() {
   // ── Upload photos ไป Supabase Storage (non-blocking, best-effort) ──
   const photoUrls = [];
   if (CFG.SUPABASE_URL !== 'YOUR_SUPABASE_URL' && APP.rPhotos.length > 0) {
-    const token = SESSION.token();
+    const token = CFG.SUPABASE_KEY; // ใช้ anon key เสมอสำหรับ Storage upload
     const uploads = APP.rPhotos.map((file, i) => {
       const ext  = file.name.split('.').pop()?.toLowerCase() || 'jpg';
       const path = `${reportId}/photo_${i}.${ext}`;
@@ -2402,7 +2402,6 @@ async function rSubmit() {
     ai_action:     APP.rAiResult.action,
     credits_given: credits,
     photo_count:   APP.rPhotos.length,
-    photo_urls:    photoUrls.filter(Boolean),
     status:        'pending'
   };
 
