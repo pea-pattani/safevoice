@@ -707,10 +707,23 @@ function photoUrl(reportCode, idx, ext='jpg') {
   return `${SB_URL}/storage/v1/object/public/${SB_BUCKET}/${reportCode}/photo_${idx}.${ext}`;
 }
 
-// ── โหลดและแสดงรูปในการ์ด (lazy) ──
-async function loadPhotos(reportCode, photoCount, containerId) {
+// ── โหลดและแสดงรูปในการ์ด (จาก photo_urls ใน DB) ──
+async function loadPhotos(reportCode, photoCount, containerId, photoUrls) {
   const el = document.getElementById(containerId);
   if (!el || !photoCount) return;
+
+  // ถ้ามี photo_urls จาก DB ใช้ตรงๆ เลย
+  if (photoUrls && photoUrls.length > 0) {
+    el.innerHTML = photoUrls.map(u => `
+      <img src="${u}" onclick="adminViewPhoto('${u}')"
+        style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:2px solid var(--border);cursor:pointer;transition:border-color .2s;"
+        onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'"
+        onerror="this.style.display='none'"
+        title="คลิกเพื่อขยาย">`).join('');
+    return;
+  }
+
+  // fallback: guess extension (กรณีรายงานเก่าที่ยังไม่มี photo_urls)
   el.innerHTML = '<div style="font-size:11px;color:var(--muted);">⌛ กำลังโหลดรูป...</div>';
   const exts = ['jpg','jpeg','png','webp'];
   const found = [];
@@ -843,6 +856,7 @@ async function loadReports() {
           status:        r.status,
           is_anon:       r.is_anonymous,
           photos:        r.photo_count  || 0,
+          photo_urls:    r.photo_urls   || [],
           verified_by:   r.verified_by  || null,
           verified_date: r.verified_at  ? r.verified_at.split('T')[0] : null,
           reject_reason: r.reject_reason|| null,
@@ -965,7 +979,7 @@ function renderVerify(){
       <div style="margin-bottom:9px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
           <span style="font-size:11px;color:var(--muted);">📷 รูปภาพ ${r.photos} รูป</span>
-          <button class="btn-sm" onclick="loadPhotos('${r.id}',${r.photos},'ph-${r.id}');this.style.display='none'">โหลดรูป</button>
+          <button class="btn-sm" onclick="loadPhotos('${r.id}',${r.photos},'ph-${r.id}',${JSON.stringify(r.photo_urls||[])});this.style.display='none'">โหลดรูป</button>
         </div>
         <div id="ph-${r.id}" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
       </div>` : '<div style="font-size:11px;color:var(--muted);margin-bottom:9px;">📷 ไม่มีรูปภาพ</div>'}
