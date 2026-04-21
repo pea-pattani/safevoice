@@ -1530,18 +1530,9 @@ async function loadMyWarningsFromSB() {
   if (!uid || uid === empCode) return;
 
   try {
-    // query ทั้ง UUID และ emp_code เพื่อรับ warnings ไม่ว่าจะบันทึกด้วย key ไหน
-    const [byUUID, byCode] = await Promise.all([
-      SB.select('warnings', `employee_id=eq.${uid}&select=*&order=created_at.desc`, CFG.SUPABASE_KEY),
-      SB.select('warnings', `employee_id=eq.${empCode}&select=*&order=created_at.desc`, CFG.SUPABASE_KEY)
-        .catch(() => [])
-    ]);
-    // รวมผล กำจัด duplicate ด้วย id
-    const seen = new Set();
-    const allRows = [...(byUUID||[]), ...(byCode||[])].filter(r => {
-      if (seen.has(r.id)) return false;
-      seen.add(r.id); return true;
-    });
+    // query ด้วย UUID เท่านั้น — employee_id เป็น UUID type ใน Supabase
+    const byUUID = await SB.select('warnings', `employee_id=eq.${uid}&select=*&order=created_at.desc`, CFG.SUPABASE_KEY);
+    const allRows = byUUID || [];
 
     const mapped = allRows.map(r => ({
       id:            r.warning_code || r.id,
