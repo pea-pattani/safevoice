@@ -532,58 +532,16 @@ body{font-family:'Sarabun',sans-serif;background:var(--navy);color:var(--white);
 // ══ DATA ══
 // ══════════════════════════════════════════════════════════════════
 //  DEMO DATA — พนักงานตัวอย่าง 2 คน สำหรับสาธิตระบบ
-//  พนักงาน 1: นางนฤมล เจริญพานิช (278629) — มีรายงาน 5 ชิ้น + ใบเตือน
-//  พนักงาน 2: นายสาโรจน์ แนวบรรทัด (303644) — มีรายงาน 1 ชิ้น (pending)
-//  key emp_id ต้องตรงกับ loginWithDemo ใน index.html
-// ══════════════════════════════════════════════════════════════════
-const DEMO_REPORTS = [
-  // ── กรกฎาคม 2568 ── 6 รายงาน
-  {id:'NM-025',_uuid:'demo-025',date:'2568-07-14',emp_id:'278629',emp_name:'นางนฤมล เจริญพานิช',text:'พบแอ่งน้ำขังบริเวณแผงควบคุมไฟฟ้า รั้วกั้นพื้นที่ชำรุด ความเสี่ยงไฟฟ้าลัดวงจรสูงมาก',risk:'High',category:'สภาพแวดล้อมอันตราย',credits:100,status:'pending',is_anon:false,photos:2},
-  {id:'NM-024',_uuid:'demo-024',date:'2568-07-11',emp_id:null,emp_name:'นิรนาม',text:'เครื่องมือวัดแรงดันไฟฟ้า (Multimeter) แสดงค่าผิดพลาด ตัวเลขกระโดดผิดปกติ ไม่สามารถวัดได้แม่นยำ',risk:'High',category:'อุปกรณ์ชำรุด',credits:0,status:'pending',is_anon:true,photos:1},
-  {id:'NM-023',_uuid:'demo-023',date:'2568-07-09',emp_id:'303644',emp_name:'นายสาโรจน์ แนวบรรทัด',text:'ป้ายเตือน "อันตรายแรงสูง" ที่เสาโซน C ซีดจางมากจนอ่านไม่ออก มองไม่เห็นจากระยะ 3 เมตร',risk:'Medium',category:'สภาพแวดล้อมอันตราย',credits:50,status:'pending',is_anon:false,photos:1},
-  {id:'NM-022',_uuid:'demo-022',date:'2568-07-05',emp_id:'278629',emp_name:'นางนฤมล เจริญพานิช',text:'Safety Harness มีร่องรอยการสึกหรอที่จุดเชื่อมต่อหลัก ใช้งานบนที่สูงเกิน 5 เมตร เสี่ยงหล่น',risk:'High',category:'อุปกรณ์ชำรุด',credits:100,status:'verified',verified_by:'นายอนัน รัตนวรรณ',verified_date:'2568-07-06',is_anon:false,photos:3},
-  {id:'NM-021',_uuid:'demo-021',date:'2568-07-03',emp_id:'427498',emp_name:'นายชินวุธ โรจนปฏิภาณ',text:'พนักงานปีนเสาไฟโดยไม่สวมอุปกรณ์ป้องกันครบ ไม่มี Double Lanyard ขณะทำงานสูง 8 เมตร',risk:'High',category:'พฤติกรรมเสี่ยง',credits:100,status:'verified',verified_by:'นายกวี แก้วศรี',verified_date:'2568-07-04',is_anon:false,photos:2},
-  {id:'NM-020',_uuid:'demo-020',date:'2568-07-01',emp_id:'449602',emp_name:'นายสัญญา ชื่นบาน',text:'ไฟส่องสว่างบริเวณหน้างานโซน A ขัดข้องกะทันหัน ต้องทำงานในที่มืด ไม่มีไฟสำรอง',risk:'Low',category:'สภาพแวดล้อมอันตราย',credits:20,status:'rejected',verified_by:'นายอนัน รัตนวรรณ',verified_date:'2568-07-02',reject_reason:'รายงานไม่ครบถ้วน ไม่ระบุสถานที่และเวลาที่ชัดเจน กรุณารายงานใหม่',is_anon:false,photos:0},
-  // ── มิถุนายน 2568 ── 6 รายงาน
-  {id:'NM-019',_uuid:'demo-019',date:'2568-06-25',emp_id:'470776',emp_name:'นายอำนาจ มีขำ',text:'ระบบ Lockout/Tagout ไม่ได้ปฏิบัติตามขั้นตอน พบสวิตช์เมนไม่ถูกล็อกก่อนซ่อมบำรุง',risk:'High',category:'ระบบงานบกพร่อง',credits:100,status:'verified',verified_by:'นายกวี แก้วศรี',verified_date:'2568-06-26',is_anon:false,photos:2},
-  {id:'NM-018',_uuid:'demo-018',date:'2568-06-18',emp_id:'278629',emp_name:'นางนฤมล เจริญพานิช',text:'พบสายไฟชำรุดที่เสาโซน B หมู่ 3 บ้านท่าช้าง ฉนวนแตกหลุด ไม่มีป้ายเตือน เสี่ยงไฟดูด',risk:'High',category:'อุปกรณ์ชำรุด',credits:100,status:'verified',verified_by:'นายอนัน รัตนวรรณ',verified_date:'2568-06-19',is_anon:false,photos:3},
-  {id:'NM-017',_uuid:'demo-017',date:'2568-06-14',emp_id:null,emp_name:'นิรนาม',text:'พบน้ำมันหล่อลื่นรั่วซึมที่แผงสวิตช์ด้านหลังอาคาร สะสมบนพื้นผิวโลหะ เสี่ยงไฟลุก',risk:'High',category:'สภาพแวดล้อมอันตราย',credits:0,status:'verified',verified_by:'นายกวี แก้วศรี',verified_date:'2568-06-15',is_anon:true,photos:1},
-  {id:'NM-016',_uuid:'demo-016',date:'2568-06-10',emp_id:'303644',emp_name:'นายสาโรจน์ แนวบรรทัด',text:'ถุงมือฉนวนไฟฟ้าแรงสูงหมดอายุการใช้งาน ยังคงวางใช้งานในคลังอุปกรณ์โดยไม่มีการตรวจสอบ',risk:'Medium',category:'อุปกรณ์ชำรุด',credits:50,status:'verified',verified_by:'นายอนัน รัตนวรรณ',verified_date:'2568-06-11',is_anon:false,photos:1},
-  {id:'NM-015',_uuid:'demo-015',date:'2568-06-05',emp_id:'427498',emp_name:'นายชินวุธ โรจนปฏิภาณ',text:'ขาดการประสานงานระหว่างทีมก่อนตัดไฟ ทีม B เริ่มงานโดยไม่รอสัญญาณยืนยัน เกือบเกิดเหตุ',risk:'High',category:'ระบบงานบกพร่อง',credits:100,status:'verified',verified_by:'นายกวี แก้วศรี',verified_date:'2568-06-06',is_anon:false,photos:0},
-  {id:'NM-014',_uuid:'demo-014',date:'2568-06-01',emp_id:'449602',emp_name:'นายสัญญา ชื่นบาน',text:'พบรอยแตกร้าวที่ฐานเสาไฟฟ้าโซน D ถนนสายหลัก อาจเป็นอันตรายต่อประชาชน',risk:'Medium',category:'สภาพแวดล้อมอันตราย',credits:50,status:'verified',verified_by:'นายอนัน รัตนวรรณ',verified_date:'2568-06-02',is_anon:false,photos:2},
-  // ── พฤษภาคม 2568 ── 5 รายงาน
-  {id:'NM-013',_uuid:'demo-013',date:'2568-05-28',emp_id:'278629',emp_name:'นางนฤมล เจริญพานิช',text:'เครนยกอุปกรณ์มีเสียงดังผิดปกติขณะยกหม้อแปลง น้ำหนัก 800 กก. ใกล้แนวสายไฟ',risk:'High',category:'อุปกรณ์ชำรุด',credits:100,status:'verified',verified_by:'นายกวี แก้วศรี',verified_date:'2568-05-29',is_anon:false,photos:2},
-  {id:'NM-012',_uuid:'demo-012',date:'2568-05-20',emp_id:'470776',emp_name:'นายอำนาจ มีขำ',text:'พนักงานใหม่ทำงานในโซนแรงสูงโดยไม่มีผู้ควบคุมดูแล ไม่ผ่านการอบรม Safety ก่อนเข้าพื้นที่',risk:'High',category:'พฤติกรรมเสี่ยง',credits:100,status:'verified',verified_by:'นายอนัน รัตนวรรณ',verified_date:'2568-05-21',is_anon:false,photos:1},
-  {id:'NM-011',_uuid:'demo-011',date:'2568-05-15',emp_id:'278629',emp_name:'นางนฤมล เจริญพานิช',text:'บันไดอลูมิเนียมมีรอยร้าวที่ขั้น 3 หน้างานติดตั้งหม้อแปลง รับน้ำหนักไม่ไหว',risk:'Medium',category:'อุปกรณ์ชำรุด',credits:50,status:'verified',verified_by:'นายอนัน รัตนวรรณ',verified_date:'2568-05-16',is_anon:false,photos:1},
-  {id:'NM-010',_uuid:'demo-010',date:'2568-05-10',emp_id:'303644',emp_name:'นายสาโรจน์ แนวบรรทัด',text:'ระบบสัญญาณเตือนภัยอัคคีภัยในห้องสวิตช์ไม่ทำงาน ทดสอบแล้วไม่มีเสียง',risk:'High',category:'ระบบงานบกพร่อง',credits:100,status:'verified',verified_by:'นายกวี แก้วศรี',verified_date:'2568-05-11',is_anon:false,photos:1},
-  {id:'NM-009',_uuid:'demo-009',date:'2568-05-03',emp_id:null,emp_name:'นิรนาม',text:'พบขยะและวัสดุไวไฟสะสมใกล้ตู้สวิตช์บอร์ด ไม่มีการกำจัดเป็นเวลานาน',risk:'Medium',category:'สภาพแวดล้อมอันตราย',credits:0,status:'verified',verified_by:'นายอนัน รัตนวรรณ',verified_date:'2568-05-04',is_anon:true,photos:1},
-  // ── เมษายน 2568 ── 4 รายงาน
-  {id:'NM-008',_uuid:'demo-008',date:'2568-04-22',emp_id:'427498',emp_name:'นายชินวุธ โรจนปฏิภาณ',text:'อุปกรณ์ตรวจจับแรงดัน (Voltage Detector) แบตเตอรี่หมด แต่ยังวางอยู่ในชุดอุปกรณ์ประจำรถ',risk:'Medium',category:'อุปกรณ์ชำรุด',credits:50,status:'verified',verified_by:'นายกวี แก้วศรี',verified_date:'2568-04-23',is_anon:false,photos:1},
-  {id:'NM-007',_uuid:'demo-007',date:'2568-04-18',emp_id:'278629',emp_name:'นางนฤมล เจริญพานิช',text:'ป้ายเตือนโซนแรงดันสูงหลุดออกจากเสา ไม่มีการแจ้งเตือนพนักงานในพื้นที่',risk:'Low',category:'สภาพแวดล้อมอันตราย',credits:20,status:'verified',verified_by:'นายอนัน รัตนวรรณ',verified_date:'2568-04-19',is_anon:false,photos:0},
-  {id:'NM-006',_uuid:'demo-006',date:'2568-04-10',emp_id:'449602',emp_name:'นายสัญญา ชื่นบาน',text:'พบพนักงานใช้โทรศัพท์มือถือขณะปฏิบัติงานบนเสาไฟ ขาดสมาธิ เสี่ยงพลัดตก',risk:'Medium',category:'พฤติกรรมเสี่ยง',credits:50,status:'verified',verified_by:'นายกวี แก้วศรี',verified_date:'2568-04-11',is_anon:false,photos:1},
-  {id:'NM-005',_uuid:'demo-005',date:'2568-04-03',emp_id:'470776',emp_name:'นายอำนาจ มีขำ',text:'ใบอนุญาตทำงานไฟฟ้า (Work Permit) ของทีมซ่อมบำรุงหมดอายุ แต่ยังดำเนินงานต่อ',risk:'High',category:'ระบบงานบกพร่อง',credits:100,status:'verified',verified_by:'นายอนัน รัตนวรรณ',verified_date:'2568-04-04',is_anon:false,photos:0},
-  // ── มีนาคม 2568 ── 4 รายงาน
-  {id:'NM-004',_uuid:'demo-004',date:'2568-03-25',emp_id:'303644',emp_name:'นายสาโรจน์ แนวบรรทัด',text:'สายดินของหม้อแปลงโซน E หลวม ไม่ได้ขันแน่นหลังการบำรุงรักษาครั้งล่าสุด',risk:'High',category:'อุปกรณ์ชำรุด',credits:100,status:'verified',verified_by:'นายกวี แก้วศรี',verified_date:'2568-03-26',is_anon:false,photos:2},
-  {id:'NM-003',_uuid:'demo-003',date:'2568-03-18',emp_id:'427498',emp_name:'นายชินวุธ โรจนปฏิภาณ',text:'เส้นทางอพยพฉุกเฉินถูกวัสดุก่อสร้างกีดขวาง ไม่สามารถเดินออกได้สะดวก',risk:'Medium',category:'สภาพแวดล้อมอันตราย',credits:50,status:'verified',verified_by:'นายอนัน รัตนวรรณ',verified_date:'2568-03-19',is_anon:false,photos:1},
-  {id:'NM-002',_uuid:'demo-002',date:'2568-03-10',emp_id:'278629',emp_name:'นางนฤมล เจริญพานิช',text:'พบคนงานจ้างเหมาไม่สวมหมวกนิรภัยและรองเท้า Safety ขณะเข้าพื้นที่ควบคุม',risk:'Medium',category:'พฤติกรรมเสี่ยง',credits:50,status:'verified',verified_by:'นายกวี แก้วศรี',verified_date:'2568-03-11',is_anon:false,photos:1},
-  {id:'NM-001',_uuid:'demo-001',date:'2568-03-05',emp_id:'449602',emp_name:'นายสัญญา ชื่นบาน',text:'ระบบ UPS สำรองไฟในห้องควบคุมแสดง Fault ค้างนาน 3 วัน ไม่มีการแจ้งซ่อม',risk:'Low',category:'ระบบงานบกพร่อง',credits:20,status:'verified',verified_by:'นายอนัน รัตนวรรณ',verified_date:'2568-03-06',is_anon:false,photos:0},
-];
 
 const DB = {
-  reports: [...DEMO_REPORTS],
+  reports: [],
   employees:[
-    // ── credits คำนวณจาก DEMO_REPORTS จริง ──
-    // นฤมล: verified 6 ชิ้น(420) − redeem 1 ครั้ง(300) = 120
     {id:'278629',name:'นางนฤมล เจริญพานิช',dept:'กฟจ.ปัตตานี',role:'employee',credits:120,redeems:1},
-    // สาโรจน์: verified 4 ชิ้น(300) + pending 1 ชิ้น(ยังไม่ได้รับ) = 300
     {id:'303644',name:'นายสาโรจน์ แนวบรรทัด',dept:'กฟจ.ปัตตานี',role:'employee',credits:300,redeems:0},
     {id:'416146',name:'นายอนัน รัตนวรรณ',dept:'กฟจ.ปัตตานี',role:'safety_officer',credits:0,redeems:0},
-    // สัญญา: verified 3 ชิ้น(50+50+20=120)
     {id:'449602',name:'นายสัญญา ชื่นบาน',dept:'กฟจ.ปัตตานี',role:'employee',credits:120,redeems:0},
-    // ชินวุธ: verified 4 ชิ้น(100+100+50+50=300)
     {id:'427498',name:'นายชินวุธ โรจนปฏิภาณ',dept:'กฟจ.ปัตตานี',role:'employee',credits:300,redeems:0},
     {id:'459102',name:'นายกวี แก้วศรี',dept:'กฟจ.ปัตตานี',role:'safety_officer',credits:0,redeems:0},
-    // อำนาจ: verified 3 ชิ้น(100+100+100=300)
     {id:'470776',name:'นายอำนาจ มีขำ',dept:'กฟจ.ปัตตานี',role:'employee',credits:300,redeems:0},
     {id:'504833',name:'นายวิริยะ รุ่งเรือง',dept:'กฟจ.ปัตตานี',role:'safety_officer',credits:0,redeems:0},
     {id:'499498',name:'นายวิชาญ รักษ์ด้วง',dept:'แผนกบริการลูกค้า',role:'employee',credits:0,redeems:0},
@@ -693,9 +651,7 @@ const DB = {
 const APP={vf:'pending',pendingReset:null};
 
 // ══ DEMO MODE — สำหรับนำเสนอ ══
-// login ด้วยรหัส "demo-admin" → ใช้ DEMO_REPORTS ทั้งหมด ไม่แตะ Supabase
-const DEMO_ADMIN_CODE = 'demo-admin';
-let DEMO_MODE = false;
+
 
 // ══ SUPABASE CONFIG ══
 const SB_URL = 'https://kgcnuelqgawslfcfzdcd.supabase.co';
@@ -782,35 +738,17 @@ async function sbPatch(table, uuid, data) {
 
 // ══ INIT ══
 document.addEventListener('DOMContentLoaded', async () => {
-  // ตรวจ demo-admin — จาก sessionStorage หรือ URL param ?demo=1
-  try {
-    const sess = JSON.parse(sessionStorage.getItem('sv_session') || '{}');
-    if (sess.emp_code === DEMO_ADMIN_CODE || sess.user_name === 'Demo Admin') DEMO_MODE = true;
-  } catch(_) {}
-  if (new URLSearchParams(location.search).get('demo') === '1') DEMO_MODE = true;
-
-  showToast(DEMO_MODE ? '🎬 Demo Mode — ใช้ข้อมูลจำลอง' : '⌛ กำลังโหลดข้อมูล...', DEMO_MODE ? 'green' : 'amber');
+  showToast('⌛ กำลังโหลดข้อมูล...', 'amber');
   await loadEmployees();
   await loadReports();
   await loadWarnings();
   renderDash(); renderVerify(); renderCredits(); renderWarnHist(); renderUsers(); fillEmpDD(); updateBadge(); anRenderAll();
   showToast('✅ โหลดข้อมูลสำเร็จ');
-
-  if (DEMO_MODE) {
-    const tb = document.querySelector('.topbar .tb-right');
-    if (tb) {
-      const badge = document.createElement('div');
-      badge.style.cssText = 'font-size:11px;font-weight:700;background:#00c96a22;border:1px solid #00c96a55;color:#00C96A;border-radius:8px;padding:4px 10px;margin-right:4px;';
-      badge.textContent = '🎬 DEMO MODE';
-      tb.prepend(badge);
-    }
-  }
 });
 
 // โหลด employees จาก Supabase — ได้ทั้ง UUID (id) และ emp_code
 // เก็บใน DB.employees แทน hardcode เดิม
 async function loadEmployees() {
-  if (DEMO_MODE) { console.log('🎬 Demo: using hardcoded employees'); return; }
   try {
     const rows = await sbGet('employees', 'select=id,emp_code,full_name,department,branch,role,credits,total_redeems');
     if (rows && rows.length > 0) {
@@ -837,7 +775,6 @@ async function loadEmployees() {
 // ══ loadReports: ดึง near_miss_reports อย่างเดียว (ไม่ join)
 // resolve ชื่อพนักงานจาก DB.employees โดยใช้ _uuid ที่โหลดมาแล้ว
 async function loadReports() {
-  if (DEMO_MODE) { DB.reports = [...DEMO_REPORTS]; console.log('🎬 Demo: using DEMO_REPORTS'); return; }
   try {
     const rows = await sbGet('near_miss_reports', 'select=*');
     if (rows && rows.length > 0) {
@@ -866,12 +803,12 @@ async function loadReports() {
       });
       console.log(`✅ โหลด ${DB.reports.length} รายงานจาก Supabase`);
     } else {
-      DB.reports = [...DEMO_REPORTS];
-      console.log('ℹ️ ใช้ Demo data');
+      DB.reports = [];
+      console.log('ℹ️ ไม่มีรายงานใน Supabase');
     }
   } catch(e) {
-    DB.reports = [...DEMO_REPORTS];
-    console.warn('loadReports error, using demo:', e.message);
+    DB.reports = [];
+    console.warn('loadReports error:', e.message);
   }
 }
 
@@ -998,15 +935,6 @@ async function doVer(id){
   const r=DB.reports.find(x=>x.id===id); if(!r) return;
   const today = new Date().toISOString();
 
-  if(DEMO_MODE || !r._uuid || r._uuid.startsWith('demo-')){
-    r.status='verified'; r.verified_date=today.split('T')[0]; r.verified_by='Demo Admin';
-    const e=DB.employees.find(x=>x.id===r.emp_id);
-    if(e&&!r.is_anon) e.credits += r.credits;
-    renderVerify(); renderDash(); renderCredits(); updateBadge();
-    showToast(`✅ ยืนยัน ${id} — +${r.credits} Credits`);
-    return;
-  }
-
   const adminName = (()=>{ try{ return JSON.parse(sessionStorage.getItem('sv_session')||'{}').user_name||'จป.'; }catch{ return 'จป.'; } })();
   // 1) อัปเดต status ของรายงาน
   const ok = await sbPatch('near_miss_reports', r._uuid, {
@@ -1059,15 +987,7 @@ async function doRej(id){
   if(!reason){ showToast('กรุณาระบุเหตุผล','red'); return; }
   const r=DB.reports.find(x=>x.id===id); if(!r) return;
 
-  // ถ้าเป็น demo data → อัปเดตแค่ local state
-  if(DEMO_MODE || !r._uuid || r._uuid.startsWith('demo-')){
-    r.status='rejected'; r.reject_reason=reason;
-    renderVerify(); renderDash(); updateBadge();
-    showToast(`✗ ปฏิเสธ ${id}`,'red');
-    return;
-  }
-
-  // Supabase จริง — patch โดยตรง
+  // Supabase — patch โดยตรง
   const ok = await sbPatch('near_miss_reports', r._uuid, {
     status:        'rejected',
     reject_reason: reason,
@@ -1199,7 +1119,6 @@ document.addEventListener('click', e => {
 });
 // ══ โหลด warnings จาก Supabase ══
 async function loadWarnings() {
-  if (DEMO_MODE) { console.log('🎬 Demo: using hardcoded warnings'); return; }
   try {
     const rows = await sbGet('warnings', 'select=*');
     if (rows && rows.length > 0) {
@@ -1225,20 +1144,6 @@ async function loadWarnings() {
 }
 async function submitWarning(){
   const empId=document.getElementById('w-emp').value;
-  // DEMO_MODE — local only, ไม่ส่ง Supabase
-  if (DEMO_MODE) {
-    const issue=document.getElementById('w-issue').value.trim();
-    const cnt=parseInt(document.getElementById('w-cnt').value)||1;
-    if (!empId||!issue) { showToast('กรุณากรอกข้อมูลให้ครบ','red'); return; }
-    const emp=DB.employees.find(e=>e.id===empId);
-    const today=new Date().toISOString().split('T')[0];
-    const wid='W-DEMO-'+Date.now().toString(36).toUpperCase().slice(-4);
-    DB.warnings.unshift({id:wid,_uuid:wid,emp_id:empId,emp_name:emp?.name||empId,date:today,issue,impact:`ใบเตือนครั้งที่ ${cnt}`,status:'active'});
-    document.getElementById('w-issue').value=''; wClearEmp();
-    renderWarnHist(); renderCredits();
-    showToast(`⚠ (Demo) ออกใบเตือน ${wid} ให้ ${emp?.name||empId}`,'amber');
-    return;
-  }
   const issue=document.getElementById('w-issue').value.trim();
   const cnt=parseInt(document.getElementById('w-cnt').value)||1;
   if(!empId){showToast('กรุณาเลือกพนักงาน','amber');return;}
