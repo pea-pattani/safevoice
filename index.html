@@ -1905,9 +1905,13 @@ function qScoreQuality(inputText, aiResult) {
 
   let quality, multiplier, label;
 
-  if (words >= 15 && hasAction && (hasCause || hasLocation)) {
+  const aiHasAction = aiResult && aiResult.action && aiResult.action.length > 5;
+
+  if (words >= 15 && (hasAction || aiHasAction) && (hasCause || hasLocation)) {
     quality = 'full';    multiplier = 1.0;  label = '✅ รายงานสมบูรณ์';
-  } else if (words >= 8 && hasAction) {
+  } else if (words >= 8 && (hasAction || aiHasAction)) {
+    quality = 'partial'; multiplier = 0.6;  label = '⚠ รายงานพอใช้ — เพิ่มสาเหตุและสถานที่จะได้คะแนนเต็ม';
+  } else if (words >= 10 && aiHasAction) {
     quality = 'partial'; multiplier = 0.6;  label = '⚠ รายงานพอใช้ — เพิ่มสาเหตุและสถานที่จะได้คะแนนเต็ม';
   } else {
     quality = 'minimal'; multiplier = 0.25; label = '❌ รายงานสั้นเกินไป — ขาด action และรายละเอียด';
