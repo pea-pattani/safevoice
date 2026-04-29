@@ -1987,15 +1987,13 @@ async function rAnalyze() {
 }
 
 async function callClaude(text, mode, photoCount) {
-  const key = CFG.CLAUDE_KEY;
-  if (!key || !key.startsWith('sk-ant')) throw new Error('no_key');
   const modeLabel    = mode === 'voice' ? 'เสียง (transcribed)' : 'ข้อความ';
   const photoContext = photoCount > 0
     ? `มีรูปประกอบ ${photoCount} รูป`
     : 'ไม่มีรูปประกอบ';
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch('https://kgcnuelqgawslfcfzdcd.supabase.co/functions/v1/claude-proxy', {
     method:'POST',
-    headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    headers:{'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtnY251ZWxxZ2F3c2xmY2Z6ZGNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNDg1NzgsImV4cCI6MjA4OTgyNDU3OH0.xlVn5RYNgfHf87tUYyMyMJWIGvLCD085y1g3EMEAf-Q'},
     body: JSON.stringify({
       model:'claude-sonnet-4-20250514', max_tokens:800,
       system:`คุณคือระบบ AI วิเคราะห์ความปลอดภัยในงานไฟฟ้า PEA ตอบกลับเป็น JSON เท่านั้น ไม่มีข้อความอื่น ไม่มี markdown
