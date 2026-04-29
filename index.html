@@ -1896,7 +1896,8 @@ function qCheckDuplicate(inputText) {
 // ── Rule 2: Action Quality Scoring ──
 function qScoreQuality(inputText, aiResult) {
   const text  = inputText.toLowerCase();
-  const words = text.split(/\s+/).length;
+  // ใช้จำนวนตัวอักษร (ไม่นับช่องว่าง) แทนการนับคำ เพราะภาษาไทยไม่มีช่องว่างระหว่างคำ
+  const chars = text.replace(/\s+/g, '').length;
 
   // ตรวจ action indicators
   const hasAction   = /แจ้ง|รายงาน|ซ่อม|เปลี่ยน|ปิดกั้น|ติดป้าย|พัน|ย้าย|ถอด|ตรวจสอบ|หยุดใช้/.test(text);
@@ -1907,11 +1908,11 @@ function qScoreQuality(inputText, aiResult) {
 
   const aiHasAction = aiResult && aiResult.action && aiResult.action.length > 5;
 
-  if (words >= 15 && (hasAction || aiHasAction) && (hasCause || hasLocation)) {
+  if (chars >= 50 && (hasAction || aiHasAction) && (hasCause || hasLocation)) {
     quality = 'full';    multiplier = 1.0;  label = '✅ รายงานสมบูรณ์';
-  } else if (words >= 8 && (hasAction || aiHasAction)) {
+  } else if (chars >= 25 && (hasAction || aiHasAction)) {
     quality = 'partial'; multiplier = 0.6;  label = '⚠ รายงานพอใช้ — เพิ่มสาเหตุและสถานที่จะได้คะแนนเต็ม';
-  } else if (words >= 10 && aiHasAction) {
+  } else if (chars >= 30 && aiHasAction) {
     quality = 'partial'; multiplier = 0.6;  label = '⚠ รายงานพอใช้ — เพิ่มสาเหตุและสถานที่จะได้คะแนนเต็ม';
   } else {
     quality = 'minimal'; multiplier = 0.25; label = '❌ รายงานสั้นเกินไป — ขาด action และรายละเอียด';
